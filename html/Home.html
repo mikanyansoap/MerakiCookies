@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home - Meraki 🍪</title>
+  <link rel="stylesheet" href="../css/Style.css">
+</head>
+
+<body>
+
+  <header>
+    <h1>Meraki 🍪</h1>
+  </header>
+
+  <header class="topbar">
+    <img src="../img/profile.png" alt="Profile" class="profile profile-topbar" onclick="toggleProfileMenu()" width="50"
+      height="50">
+  </header>
+
+  <aside id="profileMenu" class="customer-menu">
+    <header>
+      <img src="../img/profile.png" alt="Profile" class="profile" onclick="toggleProfileMenu()" width="50" height="50">
+      <h1>Meraki 🍪</h1>
+    </header>
+    <ul id="sidebarLinks">
+      <li><a href="../html/Account.html">Account</a></li>
+      <li><a href="../html/History.html">History</a></li>
+      <li><a href="../html/Login.html">Log Out</a></li>
+    </ul>
+    <button class="close-btn" onclick="toggleProfileMenu()">←</button>
+  </aside>
+
+  <nav>
+    <ul>
+      <li><a href="../html/Home.html" class="active">Home</a></li>
+      <li><a href="../html/Menu.html">Menu</a></li>
+      <li><a href="../html/Order.html">Order</a></li>
+      <li><a href="../html/Reviews.html">Reviews</a></li>
+    </ul>
+  </nav>
+
+  <hr>
+
+  <main>
+    <section>
+      <h2>About Shop</h2>
+      <p>Meraki Cookies is a small cookie business dedicated to creating freshly baked, high-quality cookies made with
+        love. The name "Meraki" is derived from the Greek language which means
+        "to do something with soul, creativity, and love." Our commitment is to put creativity and soul into every batch
+        we make.</p>
+      <p>Meraki Cookies is owned by Krizelle Jacinto, who started the business with a passion for baking and sharing
+        homemade goods. It was also created to help with her tuition and expenses.</p>
+    </section>
+
+    <section>
+      <h2>Location</h2>
+      <p>Makati City, Metro Manila</p>
+      <p>Meraki Cookies currently operates through home-based production and accepts orders online for pickup at Mapua
+        University - Makati.</p>
+    </section>
+
+    <section>
+      <h2>Our Team</h2>
+      <ul>
+        <li><strong>Krizelle Jacinto:</strong><br>Owner / Baker · Website Designer</li>
+        <li><strong>Heidi Benzon:</strong><br>Website Developer</li>
+        <li><strong>Angela Fernandez:</strong><br>Website Developer</li>
+        <li><strong>Sophia Peduca:</strong><br>Website Manager</li>
+      </ul>
+    </section>
+
+    <section id="contact">
+      <h2>Contact Info</h2>
+      <p><strong>Phone:</strong> 09762963830</p>
+      <p><strong>Email:</strong> <a href="mailto:merakookies@gmail.com">merakookies@gmail.com</a></p>
+      <p><strong>Instagram:</strong> <a href="https://tinyurl.com/Merakookies" target="_blank">@merakookies</a></p>
+      <p><strong>Facebook:</strong> <a href="https://tinyurl.com/MerakiCookies" target="_blank">Meraki</a></p>
+    </section>
+  </main>
+
+  <hr>
+
+  <footer>
+    <p>&copy; 2026 Meraki Cookies. Made with soul, creativity, and love.</p>
+  </footer>
+
+  <script>
+    function toggleProfileMenu() {
+      let menu = document.getElementById("profileMenu");
+      if (menu.style.left === "0px") {
+        menu.style.left = "-300px";
+      } else {
+        menu.style.left = "0px";
+      }
+    }
+  </script>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        let res = await fetch('../php/fetch_data.php?target=account');
+        let data = await res.json();
+        let sidebar = document.getElementById('sidebarLinks');
+        if (data.status === 'error' || !data.email) {
+            // Not logged in
+            if (sidebar) {
+                sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+            }
+        }
+    } catch(e) {
+        let sidebar = document.getElementById('sidebarLinks');
+        if (sidebar) {
+            sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+        }
+    }
+  });
+</script>
+
+</body>
+
+</html>

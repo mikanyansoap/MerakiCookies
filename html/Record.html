@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Records Management - Meraki 🍪</title>
+  <link rel="stylesheet" href="../css/Style.css">
+</head>
+<body class="database">
+
+  <aside class="sidebar">
+    <header>
+      <h1>Meraki 🍪</h1>
+    </header>
+
+    <nav>
+      <ul>
+        <li><a href="../html/Orders.html">⮞ ORDERS</a></li>
+        <li><a href="../html/Records.html">⮞ RECORDS</a></li>
+        <li><a href="../html/Feedback.html">⮞ FEEDBACK</a></li>
+        <li><a href="../html/Record.html" class="active">⮞ RECORDS MANAGEMENT</a></li>
+        <li><a href="../html/Users.html">⮞ USER MANAGEMENT</a></li>
+        <li><a href="../html/Inventory.html">⮞ INVENTORY</a></li>
+        <li><a href="../html/Login.html">⮞ LOG OUT</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="filter-bar">
+      <input type="text" id="searchInput" placeholder="Search orders..." onkeyup="filterOrders()">
+      <select id="filterSelect" onchange="filterOrders()">
+        <option value="">Filter By...</option>
+		<option value="name">Name</option>
+        <option value="order">Order</option>
+        <option value="delivery">Delivery</option>
+        <option value="payment">Payment</option>
+		<option value="contact">Contact Info</option>
+		<option value="status">Status</option>
+      </select>
+      <select id="sortSelect" onchange="filterOrders()">
+        <option value="">Sort By...</option>
+        <option value="name_asc">Name (A-Z)</option>
+        <option value="name_desc">Name (Z-A)</option>
+        <option value="date_asc">Date (Ascending)</option>
+        <option value="date_desc">Date (Descending)</option>
+      </select>
+      <button onclick="filterOrders()">Apply</button>
+    </div>
+
+    <table id="orderTable" class="records">
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Name</th>
+          <th>Order Details</th>
+          <th>Delivery</th>
+          <th>Payment</th>
+          <th>Contact Info</th>
+          <th>Status</th>
+          <th>Remarks</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="orderTableBody">
+        <tr>
+          <td colspan="9" style="text-align:center;">Loading orders management...</td>
+        </tr>
+      </tbody>
+    </table>
+	
+    <div style="text-align: right; margin-top: 15px;">
+        <button type="button" class="btn-action btn-success" onclick="addNewRow()" style="font-size:1.1rem; font-weight:bold; border-radius:24px;">+ Add Order</button>
+    </div>
+
+
+	
+    <div class="special-requests" style="margin-top: 30px;">
+      <h3>Quick Update Order Notes & Status</h3>
+      <form id="updateNotesForm" onsubmit="submitNotes(event)">
+        <p>
+          <label for="selectOrder">Select Order:</label><br>
+          <select id="selectOrder" class="acct-field" style="width:100%; margin-top:5px; text-align:left;" required>
+            <option value="">Select an order to update...</option>
+          </select>
+        </p>
+        <p style="margin-top:15px;">
+          <label for="orderStatusSelect">Update Status:</label><br>
+          <select id="orderStatusSelect" class="acct-field" style="width:100%; margin-top:5px; text-align:left;">
+            <option value="Pending">Pending</option>
+            <option value="Preparing">Preparing</option>
+            <option value="Ready for Pickup">Ready for Pickup</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </p>
+        <p style="margin-top:15px;">
+          <label for="specialRequest">Special Notes / Requests:</label><br>
+          <textarea id="specialRequest" placeholder="Enter special notes or updates here..."></textarea>
+        </p>
+        <div class="submit-container" style="margin-top:15px; display:flex; gap:10px;">
+          <button type="submit" class="btn-action">Update Notes & Status</button>
+          <input type="reset" class="btn-action btn-secondary" value="Clear Form" style="box-shadow:none;">
+        </div>
+      </form>
+      <p id="successMessage" class="success-message"></p>
+    </div>
+  </main>
+
+    <!-- Remarks Modal -->
+    <div id="remarksModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn-modal" onclick="closeRemarksModal()">&times;</span>
+            <h2>Special Remarks</h2>
+            <p id="remarksText" style="white-space: pre-wrap; padding-top: 10px;"></p>
+        </div>
+    </div>
+
+  <script>
+    let allOrders = [];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadOrders();
+    });
+
+    async function loadOrders() {
+        const tbody = document.getElementById("orderTableBody");
+        try {
+            let response = await fetch('../php/admin_api.php?action=get_orders');
+            let res = await response.json();
+            tbody.innerHTML = "";
+            
+            if (res.status === "success") {
+                allOrders = res.data;
+                if (allOrders.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">No orders found. 🍪</td></tr>`;
+                    return;
+                }
+                renderOrders(allOrders);
+                populateOrderDropdown(allOrders);
+            } else {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:red;">${res.message}</td></tr>`;
+            }
+        } catch (error) {
+            console.error("Error loading orders:", error);
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:red;">Failed to load records.</td></tr>`;
+        }
+    }
+
+    function renderOrders(ordersList) {
+        const tbody = document.getElementById("orderTableBody");
+        tbody.innerHTML = "";
+
+        if (ordersList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No records found. Click '+ Add Order' to create one.</td></tr>`;
+            return;
+        }
+
+        ordersList.forEach(order => {
+            let row = document.createElement("tr");
+            row.id = `row-${order.id}`;
+            row.innerHTML = `
+                <td>${order.id}</td>
+                <td>${order.customer_name} - cus#${order.user_id || 'guest'}</td>
+                <td>${order.order_details}</td>
+                <td>${order.delivery_method}</td>
+                <td>${order.payment_method}</td>
+                <td>${order.customer_phone}</td>
+                <td><span style="font-weight:bold; padding:4px 8px; border-radius:12px; background:${getStatusColor(order.status)}; color:white;">${order.status}</span></td>
+                <td>
+                    <button onclick="viewRemarks(this)" data-remarks="${encodeURIComponent(order.special_notes || '')}" class="btn-action" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">View</button>
+                </td>
+                <td>
+                    <button onclick="editOrder(${order.id})" class="btn-action" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Edit</button>
+                    <button onclick="deleteOrder(${order.id})" class="btn-action btn-danger" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function getStatusColor(status) {
+        switch(status) {
+            case 'Pending': return '#ffc107';
+            case 'Preparing': return '#17a2b8';
+            case 'Ready for Pickup': return '#28a745';
+            case 'Completed': return '#28a745';
+            case 'Cancelled': return '#dc3545';
+            default: return '#6c757d';
+        }
+    }
+
+    function filterOrders() {
+        const query = document.getElementById("searchInput").value.toLowerCase();
+        const filterType = document.getElementById("filterSelect").value;
+
+        let filtered = allOrders.filter(order => {
+            const nameMatch = (order.customer_name || '').toLowerCase().includes(query);
+            const detailMatch = (order.order_details || '').toLowerCase().includes(query);
+            const delMatch = (order.delivery_method || '').toLowerCase().includes(query);
+            const payMatch = (order.payment_method || '').toLowerCase().includes(query);
+            const phoneMatch = (order.customer_phone || '').toLowerCase().includes(query);
+            const statusMatch = (order.status || '').toLowerCase().includes(query);
+
+            if (filterType === "name") return nameMatch;
+            if (filterType === "order") return detailMatch;
+            if (filterType === "delivery") return delMatch;
+            if (filterType === "payment") return payMatch;
+            if (filterType === "contact") return phoneMatch;
+            if (filterType === "status") return statusMatch;
+
+            return nameMatch || detailMatch || delMatch || payMatch || phoneMatch || statusMatch;
+        });
+
+        const sortType = document.getElementById("sortSelect").value;
+        if (sortType === "name_asc") filtered.sort((a, b) => (a.customer_name || "").localeCompare(b.customer_name || ""));
+        else if (sortType === "name_desc") filtered.sort((a, b) => (b.customer_name || "").localeCompare(a.customer_name || ""));
+        else if (sortType === "date_asc") filtered.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+        else if (sortType === "date_desc") filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+        renderOrders(filtered);
+    }
+
+    function populateOrderDropdown(ordersList) {
+        const select = document.getElementById("selectOrder");
+        select.innerHTML = '<option value="">Select an order to update...</option>';
+        ordersList.forEach(order => {
+            let option = document.createElement("option");
+            option.value = order.id;
+            option.textContent = `Order #${order.id} - ${order.customer_name} (${order.order_details.substring(0, 30)}...)`;
+            select.appendChild(option);
+        });
+    }
+
+    // Auto-fill form when an order is selected
+    document.getElementById("selectOrder").addEventListener("change", function() {
+        const orderId = parseInt(this.value);
+        if (!orderId) return;
+
+        const order = allOrders.find(o => o.id === orderId);
+        if (order) {
+            document.getElementById("orderStatusSelect").value = order.status;
+            document.getElementById("specialRequest").value = order.special_notes || "";
+        }
+    });
+
+    async function submitNotes(event) {
+      event.preventDefault();
+      const orderId = document.getElementById("selectOrder").value;
+      const status = document.getElementById("orderStatusSelect").value;
+      const notes = document.getElementById("specialRequest").value;
+      const message = document.getElementById("successMessage");
+
+      if (!orderId) {
+        alert("Please select an order first.");
+        return;
+      }
+
+      const order = allOrders.find(o => o.id == orderId);
+      
+      let formData = new FormData();
+      formData.append("id", orderId);
+      formData.append("customer_name", order.customer_name);
+      formData.append("customer_phone", order.customer_phone);
+      formData.append("order_details", order.order_details);
+      formData.append("delivery_method", order.delivery_method);
+      formData.append("payment_method", order.payment_method);
+      formData.append("special_notes", notes);
+      formData.append("status", status);
+      formData.append("user_id", order.user_id || "");
+
+      try {
+        let response = await fetch("../php/admin_api.php?action=update_order", {
+            method: "POST",
+            body: formData
+        });
+        let res = await response.json();
+
+        if (res.status === "success") {
+            message.textContent = "Order updated successfully!";
+            message.style.color = "green";
+            message.style.display = "block";
+            document.getElementById("specialRequest").value = "";
+            document.getElementById("selectOrder").value = "";
+            await loadOrders();
+            setTimeout(() => { message.style.display = "none"; }, 3000);
+        } else {
+            message.textContent = "Error: " + res.message;
+            message.style.color = "red";
+            message.style.display = "block";
+        }
+      } catch(e) {
+          console.error(e);
+          message.textContent = "Error communicating with server.";
+          message.style.color = "red";
+          message.style.display = "block";
+      }
+    }
+
+    function addNewRow() {
+        const tbody = document.getElementById("orderTableBody");
+        
+        // Remove empty placeholder row if present
+        if (tbody.children.length === 1 && tbody.children[0].cells.length === 1) {
+            tbody.innerHTML = "";
+        }
+
+        const newRow = document.createElement("tr");
+        newRow.innerHTML = `
+            <td>-</td>
+            <td><input type="text" id="add-name" placeholder="Name" style="width:90%"></td>
+            <td><input type="text" id="add-details" placeholder="e.g. 2x Chocolate Chip" style="width:90%"></td>
+            <td>
+                <select id="add-delivery" style="width:90%; padding:4px;">
+                    <option value="Pickup">Pickup</option>
+                    <option value="Delivery">Delivery</option>
+                </select>
+            </td>
+            <td>
+                <select id="add-payment" style="width:90%; padding:4px;">
+                    <option value="GCash">GCash</option>
+                    <option value="Maya">Maya</option>
+                    <option value="COD">COD</option>
+                </select>
+            </td>
+            <td><input type="text" id="add-phone" placeholder="Phone" style="width:90%"></td>
+            <td>
+                <select id="add-status" style="width:90%; padding:4px;">
+                    <option value="Pending">Pending</option>
+                    <option value="Preparing">Preparing</option>
+                    <option value="Ready for Pickup">Ready for Pickup</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+            </td>
+            <td><input type="text" id="add-remarks" placeholder="Notes" style="width:90%"></td>
+            <td>
+                <button onclick="saveNewOrder()" class="btn-action btn-success" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Save</button>
+                <button onclick="loadOrders()" class="btn-action btn-secondary" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Cancel</button>
+            </td>
+        `;
+        tbody.insertBefore(newRow, tbody.firstChild);
+    }
+
+    async function saveNewOrder() {
+        const name = document.getElementById("add-name").value.trim();
+        const details = document.getElementById("add-details").value.trim();
+        const delivery = document.getElementById("add-delivery").value;
+        const payment = document.getElementById("add-payment").value;
+        const phone = document.getElementById("add-phone").value.trim();
+        const status = document.getElementById("add-status").value;
+        const remarks = document.getElementById("add-remarks").value.trim();
+
+        if (!name || !details || !phone) {
+            alert("Name, Order Details, and Phone are required.");
+            return;
+        }
+
+        let formData = new FormData();
+        formData.append("customer_name", name);
+        formData.append("order_details", details);
+        formData.append("delivery_method", delivery);
+        formData.append("payment_method", payment);
+        formData.append("customer_phone", phone);
+        formData.append("status", status);
+        formData.append("special_notes", remarks);
+
+        try {
+            let response = await fetch("../php/admin_api.php?action=add_order", {
+                method: "POST",
+                body: formData
+            });
+            let res = await response.json();
+            if (res.status === "success") {
+                alert("Order added successfully.");
+                await loadOrders();
+            } else {
+                alert(res.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error adding order.");
+        }
+    }
+
+    function editOrder(id) {
+        const order = allOrders.find(o => o.id === id);
+        if (!order) return;
+
+        const row = document.getElementById(`row-${id}`);
+        row.innerHTML = `
+            <td>${order.id}</td>
+            <td><input type="text" id="edit-name-${id}" value="${order.customer_name}" style="width:90%"></td>
+            <td><input type="text" id="edit-details-${id}" value="${order.order_details}" style="width:90%"></td>
+            <td>
+                <select id="edit-delivery-${id}" style="width:90%; padding:4px;">
+                    <option value="Pickup" ${order.delivery_method === 'Pickup' ? 'selected' : ''}>Pickup</option>
+                    <option value="Delivery" ${order.delivery_method === 'Delivery' ? 'selected' : ''}>Delivery</option>
+                </select>
+            </td>
+            <td>
+                <select id="edit-payment-${id}" style="width:90%; padding:4px;">
+                    <option value="GCash" ${order.payment_method === 'GCash' ? 'selected' : ''}>GCash</option>
+                    <option value="Maya" ${order.payment_method === 'Maya' ? 'selected' : ''}>Maya</option>
+                    <option value="COD" ${order.payment_method === 'COD' ? 'selected' : ''}>COD</option>
+                </select>
+            </td>
+            <td><input type="text" id="edit-phone-${id}" value="${order.customer_phone}" style="width:90%"></td>
+            <td>
+                <select id="edit-status-${id}" style="width:90%; padding:4px;">
+                    <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                    <option value="Preparing" ${order.status === 'Preparing' ? 'selected' : ''}>Preparing</option>
+                    <option value="Ready for Pickup" ${order.status === 'Ready for Pickup' ? 'selected' : ''}>Ready for Pickup</option>
+                    <option value="Completed" ${order.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                    <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                </select>
+            </td>
+            <td><input type="text" id="edit-remarks-${id}" value="${(order.special_notes || '').replace(/"/g, '&quot;')}" style="width:90%" placeholder="Notes"></td>
+            <td>
+                <button onclick="saveEdit(${id})" class="btn-action btn-success" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Save</button>
+                <button onclick="loadOrders()" class="btn-action btn-secondary" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Cancel</button>
+            </td>
+        `;
+    }
+
+    async function saveEdit(id) {
+        const name = document.getElementById(`edit-name-${id}`).value.trim();
+        const details = document.getElementById(`edit-details-${id}`).value.trim();
+        const delivery = document.getElementById(`edit-delivery-${id}`).value;
+        const payment = document.getElementById(`edit-payment-${id}`).value;
+        const phone = document.getElementById(`edit-phone-${id}`).value.trim();
+        const status = document.getElementById(`edit-status-${id}`).value;
+        const remarks = document.getElementById(`edit-remarks-${id}`).value.trim();
+
+        if (!name || !details || !phone) {
+            alert("Name, Order Details, and Phone are required.");
+            return;
+        }
+
+        const originalOrder = allOrders.find(o => o.id === id);
+
+        let formData = new FormData();
+        formData.append("id", id);
+        formData.append("customer_name", name);
+        formData.append("order_details", details);
+        formData.append("delivery_method", delivery);
+        formData.append("payment_method", payment);
+        formData.append("customer_phone", phone);
+        formData.append("status", status);
+        formData.append("special_notes", remarks);
+        formData.append("user_id", originalOrder.user_id || "");
+
+        try {
+            let response = await fetch("../php/admin_api.php?action=update_order", {
+                method: "POST",
+                body: formData
+            });
+            let res = await response.json();
+            if (res.status === "success") {
+                alert("Order updated successfully.");
+                await loadOrders();
+            } else {
+                alert(res.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error updating order.");
+        }
+    }
+
+    async function deleteOrder(id) {
+        if (!confirm("Are you sure you want to delete this order?")) return;
+
+        let formData = new FormData();
+        formData.append("id", id);
+
+        try {
+            let response = await fetch("../php/admin_api.php?action=delete_order", {
+                method: "POST",
+                body: formData
+            });
+            let res = await response.json();
+            if (res.status === "success") {
+                alert("Order deleted successfully.");
+                await loadOrders();
+            } else {
+                alert(res.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error deleting order.");
+        }
+    }
+
+    function viewRemarks(btn) {
+        let encodedText = btn.getAttribute('data-remarks');
+        let text = decodeURIComponent(encodedText).trim();
+        if (!text) text = "No special remarks for this order.";
+        document.getElementById('remarksText').textContent = text;
+        document.getElementById('remarksModal').style.display = 'flex';
+    }
+
+    function closeRemarksModal() {
+        document.getElementById('remarksModal').style.display = 'none';
+    }
+  </script>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        let res = await fetch('../php/fetch_data.php?target=account');
+        let data = await res.json();
+        let sidebar = document.getElementById('sidebarLinks');
+        if (data.status === 'error' || !data.email) {
+            // Not logged in
+            if (sidebar) {
+                sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+            }
+        }
+    } catch(e) {
+        let sidebar = document.getElementById('sidebarLinks');
+        if (sidebar) {
+            sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+        }
+    }
+  });
+</script>
+
+</body>
+</html>

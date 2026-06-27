@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order - Meraki 🍪</title>
+    <link rel="stylesheet" href="../css/Style.css">
+</head>
+<body>
+
+  <header>
+    <h1>Meraki 🍪</h1>
+  </header>
+
+  <header class="topbar">
+    <img src="../img/profile.png" alt="Profile" class="profile" onclick="toggleProfileMenu()" width="50" height="50">
+  </header>
+
+<aside id="profileMenu" class="customer-menu">
+      <header>
+      <img src="../img/profile.png" alt="Profile" class="profile" onclick="toggleProfileMenu()" width="50" height="50">
+      <h1>Meraki 🍪</h1>
+	  </header>
+  <ul id="sidebarLinks">
+    <li><a href="../html/Account.html">Account</a></li>
+    <li><a href="../html/History.html">History</a></li>
+    <li><a href="../html/Login.html">Log Out</a></li>
+  </ul>
+    <button class="close-btn" onclick="toggleProfileMenu()">←</button>
+</aside>
+
+  <nav>
+    <ul>
+      <li><a href="../html/Home.html">Home</a></li>
+      <li><a href="../html/Menu.html">Menu</a></li>
+      <li><a href="../html/Order.html" class="active">Order</a></li>
+      <li><a href="../html/Reviews.html">Reviews</a></li>
+    </ul>
+  </nav>
+
+    <hr>
+
+    <main style="display:block;">
+        <h2>Order Form</h2>
+        <p>Select your cookies and choose your payment method below.</p>
+
+        <form id="orderForm" onsubmit="submitOrder(event)">
+
+            <fieldset>
+                <legend><strong>Choose Your Cookies</strong></legend>
+                <br>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cookie Flavor</th>
+                            <th>Price per Piece</th>
+                            <th>Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Classic Chocolate Chip</td>
+                            <td>45 PHP</td>
+                            <td><input type="number" name="qty_chocolate_chip" min="0" value="0"></td>
+                        </tr>
+                        <tr>
+                            <td>Velvety Red Velvet</td>
+                            <td>50 PHP</td>
+                            <td><input type="number" name="qty_red_velvet" min="0" value="0"></td>
+                        </tr>
+                        <tr>
+                            <td>Gooey S'mores</td>
+                            <td>50 PHP</td>
+                            <td><input type="number" name="qty_smores" min="0" value="0"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </fieldset>
+
+            <fieldset>
+                <legend><strong>Payment Method</strong></legend>
+                <p>Please select how you would like to pay:</p>
+
+                <input type="radio" id="gcash" name="payment_method" value="GCash" required>
+                <label for="gcash"><strong>GCash</strong> (09762963830 - Krizelle J.)</label><br><br>
+
+                <input type="radio" id="maya" name="payment_method" value="Maya">
+                <label for="maya"><strong>Maya</strong> (09762963830)</label><br><br>
+
+                <input type="radio" id="cod" name="payment_method" value="COD">
+                <label for="cod"><strong>Cash on Delivery/Pickup</strong></label><br><br>
+
+                <p><i>Note: For GCash/Maya, please send a screenshot of the receipt to our Instagram @merakookies.</i></p>
+            </fieldset>
+
+            <fieldset>
+                <legend><strong>Delivery & Contact Info</strong></legend>
+                <p>
+                    <label for="full_name">Full Name:</label><br>
+                    <input type="text" id="full_name" name="customer_name" required>
+                </p>
+                <p>
+                    <label for="phone">Phone Number:</label><br>
+                    <input type="tel" id="phone" name="customer_phone" required>
+                </p>
+                <p>
+                    <label>Method:</label><br>
+                    <input type="radio" id="pickup" name="delivery_method" value="Pickup" checked>
+                    <label for="pickup">Pickup (Mapua Makati)</label><br>
+                    <input type="radio" id="delivery" name="delivery_method" value="Delivery">
+                    <label for="delivery">Delivery (Within Makati)</label>
+                </p>
+                <p>
+                    <label for="notes">Special Requests:</label><br>
+                    <textarea id="notes" name="special_notes" rows="4" cols="50"></textarea>
+                </p>
+            </fieldset>
+
+            <div>
+                <button type="submit">Place Order & Go to Reviews</button>
+                <input type="reset" value="Clear Form">
+            </div>
+
+        </form>
+    </main>
+
+    <hr>
+
+    <footer>
+        <p>&copy; 2026 Meraki Cookies. Made with soul, creativity, and love.</p>
+    </footer>
+
+    <div id="toast-container"></div>
+
+    <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        async function submitOrder(event) {
+            event.preventDefault();
+            const form = document.getElementById('orderForm');
+            const formData = new FormData(form);
+
+            try {
+                let response = await fetch("../php/store.php?action=place_order", {
+                    method: "POST",
+                    body: formData
+                });
+                let data = await response.json();
+                if(data.status === "success") {
+                    showToast('Order placed successfully! Redirecting...', 'success');
+                    setTimeout(() => window.location.href = "Reviews.html", 2000);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (error) {
+                console.error(error);
+                showToast('Failed to place order. Are you logged in?', 'error');
+            }
+        }
+		
+  function toggleProfileMenu() {
+    let menu = document.getElementById("profileMenu");
+    if (menu.style.left === "0px") {
+      menu.style.left = "-300px";
+    } else {
+      menu.style.left = "0px";
+    }
+  }
+    </script>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        let res = await fetch('../php/fetch_data.php?target=account');
+        let data = await res.json();
+        let sidebar = document.getElementById('sidebarLinks');
+        if (data.status === 'error' || !data.email) {
+            // Not logged in
+            if (sidebar) {
+                sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+            }
+        }
+    } catch(e) {
+        let sidebar = document.getElementById('sidebarLinks');
+        if (sidebar) {
+            sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+        }
+    }
+  });
+</script>
+
+</body>
+</html>

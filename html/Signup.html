@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up - Meraki 🍪</title>
+  <link rel="stylesheet" href="../css/Style.css">
+</head>
+<body>
+
+  <header>
+    <h1>Meraki 🍪</h1>
+  </header>
+
+  <hr>
+
+  <main>
+    <fieldset class="login">
+
+      <p>
+        <input type="text" id="name" name="customer_name" required placeholder="Name">
+      </p>
+      <p>
+        <input type="email" id="email" name="customer_email" required placeholder="Email Address">
+      </p>
+      <p>
+        <input type="tel" id="phone" name="customer_phone" required placeholder="Phone">
+      </p>
+      <p>
+        <input type="password" id="password" name="customer_password" required placeholder="Password">
+      </p>
+      <p>
+        <button class="login" onclick="checkSignup()">→</button>
+      </p>
+    </fieldset>
+  </main>
+
+  <nav>
+    <p>Already have an account? <a href="../html/Login.html">Login now</a></p>
+  </nav>
+
+  <hr>
+
+  <div id="toast-container"></div>
+
+  <script>
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 400);
+    }, 3000);
+}
+
+async function checkSignup() {
+    let name = document.getElementById("name").value.trim();
+    let email = document.getElementById("email").value.trim();
+    let phone = document.getElementById("phone").value.trim();
+    let password = document.getElementById("password").value.trim();
+
+    if (!name || !email || !phone || !password) {
+        showToast("Please fill in all required fields.", 'error');
+        return;
+    }
+
+    let formData = new FormData();
+    formData.append('customer_name', name);
+    formData.append('customer_email', email);
+    formData.append('customer_phone', phone);
+    formData.append('customer_password', password);
+
+    try {
+        let response = await fetch('../php/auth.php?action=signup', { method: 'POST', body: formData });
+        let data = await response.json();
+
+        if (data.status === 'success') {
+            showToast('Account created successfully! Redirecting...', 'success');
+            setTimeout(() => window.location.href = "Home.html", 2000);
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (e) {
+        showToast('Failed to connect to the server.', 'error');
+    }
+}
+  </script>
+
+</body>
+</html>

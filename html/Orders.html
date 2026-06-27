@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders - Meraki 🍪</title>
+  <link rel="stylesheet" href="../css/Style.css">
+</head>
+<body class="database">
+
+  <aside class="sidebar">
+    <header>
+      <h1>Meraki 🍪</h1>
+    </header>
+
+    <nav>
+      <ul>
+        <li><a href="../html/Orders.html" class="active">⮞ ORDERS</a></li>
+        <li><a href="../html/Records.html">⮞ RECORDS</a></li>
+        <li><a href="../html/Feedback.html">⮞ FEEDBACK</a></li>
+        <li><a href="../html/Record.html">⮞ RECORDS MANAGEMENT</a></li>
+        <li><a href="../html/Users.html">⮞ USER MANAGEMENT</a></li>
+        <li><a href="../html/Inventory.html">⮞ INVENTORY</a></li>
+        <li><a href="../html/Login.html">⮞ LOG OUT</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="filter-bar">
+      <input type="text" id="searchInput" placeholder="Search orders..." onkeyup="filterOrders()">
+      <select id="filterSelect" onchange="filterOrders()">
+        <option value="">Filter By...</option>
+		<option value="name">Customer Name</option>
+        <option value="cookie">Cookie Name</option>
+      </select>
+      <select id="sortSelect" onchange="filterOrders()">
+        <option value="">Sort By...</option>
+        <option value="name_asc">Name (A-Z)</option>
+        <option value="name_desc">Name (Z-A)</option>
+        <option value="date_asc">Date (Ascending)</option>
+        <option value="date_desc">Date (Descending)</option>
+      </select>
+      <button onclick="filterOrders()">Apply</button>
+    </div>
+
+    <table class="records">
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Name</th>
+          <th>Cookie Name</th>
+          <th>Quantity</th>
+          <th>Price</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="ordersTableBody">
+        <tr>
+          <td colspan="6" style="text-align:center;">Loading orders...</td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
+
+  <script>
+    let allOrders = [];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadOrders();
+    });
+
+    async function loadOrders() {
+        const tbody = document.getElementById("ordersTableBody");
+        try {
+            let response = await fetch('../php/fetch_data.php?target=orders');
+            let data = await response.json();
+            tbody.innerHTML = "";
+            allOrders = [];
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No orders found. 🍪</td></tr>`;
+                return;
+            }
+
+            data.forEach(order => {
+                let parts = order.cookie.split(',');
+                parts.forEach(part => {
+                    let match = part.trim().match(/^(\d+)x\s+(.+)$/);
+                    let qty = 1;
+                    let flavor = part.trim();
+                    if (match) {
+                        qty = parseInt(match[1]);
+                        flavor = match[2];
+                    }
+                    let price = 0;
+                    let flavorLower = flavor.toLowerCase();
+                    if (flavorLower.includes('chocolate')) price = 45;
+                    else if (flavorLower.includes('velvet')) price = 50;
+                    else if (flavorLower.includes('smores') || flavorLower.includes("s'mores")) price = 50;
+
+                    let totalPrice = qty * price;
+                    let orderRow = {
+                        id: order.id,
+                        user_id: order.user_id,
+                        name: order.name,
+                        flavor: flavor,
+                        qty: qty,
+                        totalPrice: totalPrice,
+                        date: new Date(order.date).toLocaleDateString()
+                    };
+                    allOrders.push(orderRow);
+                });
+            });
+
+            renderOrders(allOrders);
+        } catch (error) {
+            console.error("Error loading orders:", error);
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Failed to load orders.</td></tr>`;
+        }
+    }
+
+    function renderOrders(ordersList) {
+        const tbody = document.getElementById("ordersTableBody");
+        tbody.innerHTML = "";
+        ordersList.forEach(order => {
+            let row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${order.id}</td>
+                <td>${order.name} - cus#${order.user_id || 'guest'}</td>
+                <td>${order.flavor}</td>
+                <td>${order.qty}</td>
+                <td>${order.totalPrice} PHP</td>
+                <td>${order.date}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function filterOrders() {
+        const query = document.getElementById("searchInput").value.toLowerCase();
+        const filterType = document.getElementById("filterSelect").value;
+
+        let filtered = allOrders.filter(order => {
+            if (filterType === "name") {
+                return order.name.toLowerCase().includes(query);
+            } else if (filterType === "cookie") {
+                return order.flavor.toLowerCase().includes(query);
+            } else {
+                return order.name.toLowerCase().includes(query) || order.flavor.toLowerCase().includes(query);
+            }
+        });
+
+        const sortType = document.getElementById("sortSelect").value;
+        if (sortType === "name_asc") filtered.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        else if (sortType === "name_desc") filtered.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+        else if (sortType === "date_asc") filtered.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+        else if (sortType === "date_desc") filtered.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+        renderOrders(filtered);
+    }
+  </script>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        let res = await fetch('../php/fetch_data.php?target=account');
+        let data = await res.json();
+        let sidebar = document.getElementById('sidebarLinks');
+        if (data.status === 'error' || !data.email) {
+            // Not logged in
+            if (sidebar) {
+                sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+            }
+        }
+    } catch(e) {
+        let sidebar = document.getElementById('sidebarLinks');
+        if (sidebar) {
+            sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+        }
+    }
+  });
+</script>
+
+</body>
+</html>

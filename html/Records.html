@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Records - Meraki 🍪</title>
+  <link rel="stylesheet" href="../css/Style.css">
+</head>
+<body class="database">
+
+  <aside class="sidebar">
+    <header>
+      <h1>Meraki 🍪</h1>
+    </header>
+
+    <nav>
+      <ul>
+        <li><a href="../html/Orders.html">⮞ ORDERS</a></li>
+        <li><a href="../html/Records.html" class="active">⮞ RECORDS</a></li>
+        <li><a href="../html/Feedback.html">⮞ FEEDBACK</a></li>
+        <li><a href="../html/Record.html">⮞ RECORDS MANAGEMENT</a></li>
+        <li><a href="../html/Users.html">⮞ USER MANAGEMENT</a></li>
+        <li><a href="../html/Inventory.html">⮞ INVENTORY</a></li>
+        <li><a href="../html/Login.html">⮞ LOG OUT</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="filter-bar">
+      <input type="text" id="searchInput" placeholder="Search records..." onkeyup="filterRecords()">
+      <select id="filterSelect" onchange="filterRecords()">
+        <option value="">Filter By...</option>
+		<option value="name">Name</option>
+        <option value="order">Order</option>
+        <option value="delivery">Delivery</option>
+        <option value="payment">Payment</option>
+		<option value="contact">Contact Info</option>
+      </select>
+      <button onclick="filterRecords()">Apply</button>
+    </div>
+
+    <table class="records">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Order</th>
+          <th>Delivery</th>
+          <th>Payment</th>
+          <th>Contact Info</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="recordsTableBody">
+        <tr>
+          <td colspan="6" style="text-align:center;">Loading records...</td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
+
+  <script>
+    let allRecords = [];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadRecords();
+    });
+
+    async function loadRecords() {
+        const tbody = document.getElementById("recordsTableBody");
+        try {
+            let response = await fetch('../php/fetch_data.php?target=records');
+            let data = await response.json();
+            tbody.innerHTML = "";
+            allRecords = data;
+
+            if (allRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No records found. 🍪</td></tr>`;
+                return;
+            }
+
+            renderRecords(allRecords);
+        } catch (error) {
+            console.error("Error loading records:", error);
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Failed to load records.</td></tr>`;
+        }
+    }
+
+    function renderRecords(recordsList) {
+        const tbody = document.getElementById("recordsTableBody");
+        tbody.innerHTML = "";
+        recordsList.forEach(rec => {
+            let row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${rec.name}</td>
+                <td>${rec.order}</td>
+                <td>${rec.delivery}</td>
+                <td>${rec.payment}</td>
+                <td>${rec.contact}</td>
+                <td>${new Date(rec.date).toLocaleDateString()}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function filterRecords() {
+        const query = document.getElementById("searchInput").value.toLowerCase();
+        const filterType = document.getElementById("filterSelect").value;
+
+        let filtered = allRecords.filter(rec => {
+            if (filterType === "name") {
+                return rec.name.toLowerCase().includes(query);
+            } else if (filterType === "order") {
+                return rec.order.toLowerCase().includes(query);
+            } else if (filterType === "delivery") {
+                return rec.delivery.toLowerCase().includes(query);
+            } else if (filterType === "payment") {
+                return rec.payment.toLowerCase().includes(query);
+            } else if (filterType === "contact") {
+                return rec.contact.toLowerCase().includes(query);
+            } else {
+                return rec.name.toLowerCase().includes(query) || 
+                       rec.order.toLowerCase().includes(query) ||
+                       rec.delivery.toLowerCase().includes(query) ||
+                       rec.payment.toLowerCase().includes(query) ||
+                       rec.contact.toLowerCase().includes(query);
+            }
+        });
+        renderRecords(filtered);
+    }
+  </script>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        let res = await fetch('../php/fetch_data.php?target=account');
+        let data = await res.json();
+        let sidebar = document.getElementById('sidebarLinks');
+        if (data.status === 'error' || !data.email) {
+            // Not logged in
+            if (sidebar) {
+                sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+            }
+        }
+    } catch(e) {
+        let sidebar = document.getElementById('sidebarLinks');
+        if (sidebar) {
+            sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+        }
+    }
+  });
+</script>
+
+</body>
+</html>

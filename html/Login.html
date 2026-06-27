@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Meraki 🍪</title>
+	<link rel="stylesheet" href="../css/Style.css">
+</head>
+<body>
+
+    <header>
+        <h1>Meraki 🍪</h1>
+    </header>
+
+    <hr>
+
+    <main>
+            <fieldset class="login">
+                <p>
+                    <input type="email" id="email" name="customer_email" required placeholder="Email Address">
+                </p>
+                <p>
+                    <input type="password" id="password" name="customer_password" required placeholder="Password">
+                </p>
+                <p>
+                    <a href="#">Forgot Password?</a>
+                </p>
+                <p>
+					<button class="login" onclick="checkLogin()">→</button>
+				</p>
+
+            </fieldset>
+    </main>
+
+    <nav>
+        <p>Don’t have an account? <a href="../html/Signup.html">Signup now</a></p>
+    </nav>
+
+<script>
+async function checkLogin() {
+    let email = document.getElementById("email").value.trim();
+    let password = document.getElementById("password").value.trim();
+
+    if (!email || !password) {
+        alert("Please fill in all required fields.");
+        return;
+    }
+
+    let formData = new FormData();
+    formData.append('customer_email', email);
+    formData.append('customer_password', password);
+
+    let response = await fetch('../php/auth.php?action=login', { method: 'POST', body: formData });
+    let data = await response.json();
+
+    if (data.status === 'success') {
+        window.location.href = (data.role === 'admin') ? "records.html" : "home.html";
+    } else {
+        alert(data.message);
+    }
+}
+
+
+</script>
+
+    <hr>
+
+</body>
+</html>

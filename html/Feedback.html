@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback - Meraki 🍪</title>
+  <link rel="stylesheet" href="../css/Style.css">
+</head>
+<body class="database">
+
+  <aside class="sidebar">
+    <header>
+      <h1>Meraki 🍪</h1>
+    </header>
+
+    <nav>
+      <ul>
+        <li><a href="../html/Orders.html">⮞ ORDERS</a></li>
+        <li><a href="../html/Records.html">⮞ RECORDS</a></li>
+        <li><a href="../html/Feedback.html" class="active">⮞ FEEDBACK</a></li>
+        <li><a href="../html/Record.html">⮞ RECORDS MANAGEMENT</a></li>
+        <li><a href="../html/Users.html">⮞ USER MANAGEMENT</a></li>
+        <li><a href="../html/Inventory.html">⮞ INVENTORY</a></li>
+        <li><a href="../html/Login.html">⮞ LOG OUT</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="filter-bar">
+      <input type="text" id="searchInput" placeholder="Search feedback..." onkeyup="filterFeedback()">
+      <select id="filterSelect" onchange="filterFeedback()">
+        <option value="">Filter By...</option>
+        <option value="name">Name</option>
+        <option value="likes">Likes</option>
+        <option value="improvements">Improvements</option>
+        <option value="additional">Additional</option>
+      </select>
+      <select id="sortSelect" onchange="filterFeedback()">
+        <option value="">Sort By...</option>
+        <option value="name_asc">Name (A-Z)</option>
+        <option value="name_desc">Name (Z-A)</option>
+        <option value="date_asc">Date (Ascending)</option>
+        <option value="date_desc">Date (Descending)</option>
+      </select>
+      <button onclick="filterFeedback()">Apply</button>
+    </div>
+
+    <table class="records">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Rating</th>
+          <th>Likes</th>
+          <th>Improvements</th>
+          <th>Additional</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="feedbackTableBody">
+        <tr>
+          <td colspan="7" style="text-align:center;">Loading customer feedback...</td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
+
+  <script>
+    let allFeedback = [];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadFeedback();
+    });
+
+    async function loadFeedback() {
+        const tbody = document.getElementById("feedbackTableBody");
+        try {
+            let response = await fetch('../php/fetch_data.php?target=feedback');
+            let data = await response.json();
+            tbody.innerHTML = "";
+            allFeedback = data;
+
+            if (allFeedback.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">No customer reviews found yet. 🍪</td></tr>`;
+                return;
+            }
+
+            renderFeedback(allFeedback);
+        } catch (error) {
+            console.error("Error loading customer feedback:", error);
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">Failed to read feedback entries.</td></tr>`;
+        }
+    }
+
+    function renderFeedback(feedbackList) {
+        const tbody = document.getElementById("feedbackTableBody");
+        tbody.innerHTML = "";
+        feedbackList.forEach(item => {
+            let stars = '⭐'.repeat(item.rating || 5);
+            let row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${item.id}</td>
+                <td>${item.name || 'Anonymous'}</td>
+                <td>${stars}</td>
+                <td>${item.likes || '-'}</td>
+                <td>${item.improvements || '-'}</td>
+                <td>${item.additional || '-'}</td>
+                <td>
+                    <button onclick="deleteFeedback(${item.id})" style="background:#dc3545; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function filterFeedback() {
+        const query = document.getElementById("searchInput").value.toLowerCase();
+        const filterType = document.getElementById("filterSelect").value;
+
+        let filtered = allFeedback.filter(item => {
+            const nameMatch = (item.name || '').toLowerCase().includes(query);
+            const likesMatch = (item.likes || '').toLowerCase().includes(query);
+            const impMatch = (item.improvements || '').toLowerCase().includes(query);
+            const addMatch = (item.additional || '').toLowerCase().includes(query);
+
+            if (filterType === "name") return nameMatch;
+            if (filterType === "likes") return likesMatch;
+            if (filterType === "improvements") return impMatch;
+            if (filterType === "additional") return addMatch;
+
+            return nameMatch || likesMatch || impMatch || addMatch;
+        });
+
+        const sortType = document.getElementById("sortSelect").value;
+        if (sortType === "name_asc") filtered.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        else if (sortType === "name_desc") filtered.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+        else if (sortType === "date_asc") filtered.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+        else if (sortType === "date_desc") filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+        renderFeedback(filtered);
+    }
+
+    async function deleteFeedback(id) {
+        if (!confirm("Are you sure you want to delete this feedback entry?")) return;
+        
+        let formData = new FormData();
+        formData.append("id", id);
+
+        try {
+            let response = await fetch("../php/admin_api.php?action=delete_feedback", {
+                method: "POST",
+                body: formData
+            });
+            let res = await response.json();
+            if (res.status === "success") {
+                alert("Feedback deleted successfully.");
+                await loadFeedback();
+            } else {
+                alert(res.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error deleting feedback.");
+        }
+    }
+  </script>
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        let res = await fetch('../php/fetch_data.php?target=account');
+        let data = await res.json();
+        let sidebar = document.getElementById('sidebarLinks');
+        if (data.status === 'error' || !data.email) {
+            // Not logged in
+            if (sidebar) {
+                sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+            }
+        }
+    } catch(e) {
+        let sidebar = document.getElementById('sidebarLinks');
+        if (sidebar) {
+            sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+        }
+    }
+  });
+</script>
+
+</body>
+</html>

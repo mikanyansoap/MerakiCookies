@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory - Meraki 🍪</title>
+  <link rel="stylesheet" href="../css/Style.css">
+</head>
+<body class="database">
+
+  <aside class="sidebar">
+    <header>
+      <h1>Meraki 🍪</h1>
+    </header>
+
+    <nav>
+      <ul>
+        <li><a href="../html/Orders.html">⮞ ORDERS</a></li>
+        <li><a href="../html/Records.html">⮞ RECORDS</a></li>
+        <li><a href="../html/Feedback.html">⮞ FEEDBACK</a></li>
+        <li><a href="../html/Record.html">⮞ RECORDS MANAGEMENT</a></li>
+        <li><a href="../html/Users.html">⮞ USER MANAGEMENT</a></li>
+        <li><a href="../html/Inventory.html" class="active">⮞ INVENTORY</a></li>
+        <li><a href="../html/Login.html">⮞ LOG OUT</a></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="filter-bar">
+      <input type="text" id="searchInput" placeholder="Search inventory..." onkeyup="filterInventory()">
+      <select id="filterSelect" onchange="filterInventory()">
+        <option value="">Filter By...</option>
+        <option value="item_name">Item Name</option>
+        <option value="date_made">Date Made</option>
+      </select>
+      <select id="sortSelect" onchange="filterInventory()">
+        <option value="">Sort By...</option>
+        <option value="name_asc">Name (A-Z)</option>
+        <option value="name_desc">Name (Z-A)</option>
+        <option value="date_asc">Date (Ascending)</option>
+        <option value="date_desc">Date (Descending)</option>
+      </select>
+      <button onclick="filterInventory()">Apply</button>
+    </div>
+
+    <table class="records">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Item Name</th>
+          <th>Quantity</th>
+          <th>Price</th>
+          <th>Date Made</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="inventoryTableBody">
+        <tr>
+          <td colspan="6" style="text-align:center;">Loading inventory...</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <div style="text-align: right; margin-top: 15px;">
+        <button type="button" class="btn-action btn-success" onclick="addNewRow()" style="font-size:1.1rem; font-weight:bold; border-radius:24px;">+ Add Item</button>
+    </div>
+  </main>
+
+  <script>
+    let allInventory = [];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadInventory();
+    });
+
+    async function loadInventory() {
+        const tbody = document.getElementById("inventoryTableBody");
+        try {
+            let response = await fetch('../php/admin_api.php?action=get_inventory');
+            let data = await response.json();
+            tbody.innerHTML = "";
+            
+            if (data.status === "success") {
+                allInventory = data.data;
+                if (allInventory.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No inventory items found. 🍪</td></tr>`;
+                    return;
+                }
+                renderInventory(allInventory);
+            } else {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">${data.message || 'Failed to read inventory.'}</td></tr>`;
+            }
+        } catch (error) {
+            console.error("Error loading inventory:", error);
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Failed to read inventory entries.</td></tr>`;
+        }
+    }
+
+    function renderInventory(inventoryList) {
+        const tbody = document.getElementById("inventoryTableBody");
+        tbody.innerHTML = "";
+        inventoryList.forEach(item => {
+            let row = document.createElement("tr");
+            row.id = `row-${item.id}`;
+            row.innerHTML = `
+                <td>${item.id}</td>
+                <td>${item.item_name}</td>
+                <td>${item.quantity}</td>
+                <td>₱${item.price}</td>
+                <td>${item.date_made || '-'}</td>
+                <td>
+                    <button onclick="editItem(${item.id})" class="btn-action" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Edit</button>
+                    <button onclick="deleteItem(${item.id})" class="btn-action btn-danger" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function addNewRow() {
+        const tbody = document.getElementById("inventoryTableBody");
+        
+        if (tbody.children.length === 1 && tbody.children[0].cells.length === 1) {
+            tbody.innerHTML = "";
+        }
+
+        const newRow = document.createElement("tr");
+        newRow.innerHTML = `
+            <td>-</td>
+            <td>
+                <select id="add-item-name" style="width:90%; padding:4px;" onchange="updatePrice('add-item-name', 'add-price')">
+                    <option value="Classic Chocolate Chip">Classic Chocolate Chip</option>
+                    <option value="Velvety Red Velvet">Velvety Red Velvet</option>
+                    <option value="Gooey S'mores">Gooey S'mores</option>
+                </select>
+            </td>
+            <td><input type="number" id="add-quantity" placeholder="0" style="width:90%"></td>
+            <td><input type="number" step="0.01" id="add-price" value="45.00" readonly style="width:90%; background-color:#e9ecef; cursor:not-allowed;"></td>
+            <td><input type="date" id="add-date-made" style="width:90%"></td>
+            <td>
+                <button onclick="saveNewItem()" class="btn-action btn-success" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Save</button>
+                <button onclick="loadInventory()" class="btn-action btn-secondary" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Cancel</button>
+            </td>
+        `;
+        tbody.insertBefore(newRow, tbody.firstChild);
+    }
+
+    function updatePrice(selectId, priceId) {
+        const val = document.getElementById(selectId).value;
+        const priceInput = document.getElementById(priceId);
+        if (val === "Classic Chocolate Chip") priceInput.value = 45.00;
+        else if (val === "Velvety Red Velvet") priceInput.value = 50.00;
+        else if (val === "Gooey S'mores") priceInput.value = 50.00;
+    }
+
+    async function saveNewItem() {
+        const name = document.getElementById("add-item-name").value.trim();
+        const quantity = document.getElementById("add-quantity").value.trim();
+        const price = document.getElementById("add-price").value.trim();
+        const date_made = document.getElementById("add-date-made").value.trim();
+
+        if (!name) {
+            alert("Item Name is required.");
+            return;
+        }
+
+        let formData = new FormData();
+        formData.append("item_name", name);
+        formData.append("quantity", quantity);
+        formData.append("price", price);
+        formData.append("date_made", date_made);
+
+        try {
+            let response = await fetch("../php/admin_api.php?action=add_inventory", {
+                method: "POST",
+                body: formData
+            });
+            let res = await response.json();
+            if (res.status === "success") {
+                alert("Item added successfully.");
+                await loadInventory();
+            } else {
+                alert(res.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error adding item.");
+        }
+    }
+
+    function editItem(id) {
+        const item = allInventory.find(i => i.id === id);
+        if (!item) return;
+
+        const row = document.getElementById(`row-${id}`);
+        row.innerHTML = `
+            <td>${id}</td>
+            <td>
+                <select id="edit-name-${id}" style="width:90%; padding:4px;" onchange="updatePrice('edit-name-${id}', 'edit-price-${id}')">
+                    <option value="Classic Chocolate Chip" ${item.item_name === 'Classic Chocolate Chip' ? 'selected' : ''}>Classic Chocolate Chip</option>
+                    <option value="Velvety Red Velvet" ${item.item_name === 'Velvety Red Velvet' ? 'selected' : ''}>Velvety Red Velvet</option>
+                    <option value="Gooey S'mores" ${item.item_name === "Gooey S'mores" ? 'selected' : ''}>Gooey S'mores</option>
+                </select>
+            </td>
+            <td><input type="number" id="edit-quantity-${id}" value="${item.quantity}" style="width:90%"></td>
+            <td><input type="number" step="0.01" id="edit-price-${id}" value="${item.price}" readonly style="width:90%; background-color:#e9ecef; cursor:not-allowed;"></td>
+            <td><input type="date" id="edit-date-made-${id}" value="${item.date_made || ''}" style="width:90%"></td>
+            <td>
+                <button onclick="saveEdit(${id})" class="btn-action btn-success" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Save</button>
+                <button onclick="loadInventory()" class="btn-action btn-secondary" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Cancel</button>
+            </td>
+        `;
+    }
+
+    async function saveEdit(id) {
+        const name = document.getElementById(`edit-name-${id}`).value.trim();
+        const quantity = document.getElementById(`edit-quantity-${id}`).value.trim();
+        const price = document.getElementById(`edit-price-${id}`).value.trim();
+        const date_made = document.getElementById(`edit-date-made-${id}`).value.trim();
+
+        if (!name) {
+            alert("Item Name is required.");
+            return;
+        }
+
+        let formData = new FormData();
+        formData.append("id", id);
+        formData.append("item_name", name);
+        formData.append("quantity", quantity);
+        formData.append("price", price);
+        formData.append("date_made", date_made);
+
+        try {
+            let response = await fetch("../php/admin_api.php?action=update_inventory", {
+                method: "POST",
+                body: formData
+            });
+            let res = await response.json();
+            if (res.status === "success") {
+                alert("Item updated successfully.");
+                await loadInventory();
+            } else {
+                alert(res.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error updating item.");
+        }
+    }
+
+    function filterInventory() {
+        const query = document.getElementById("searchInput").value.toLowerCase();
+        const filterType = document.getElementById("filterSelect").value;
+
+        let filtered = allInventory.filter(item => {
+            const nameMatch = (item.item_name || '').toLowerCase().includes(query);
+            const dateMatch = (item.date_made || '').toLowerCase().includes(query);
+
+            if (filterType === "item_name") return nameMatch;
+            if (filterType === "date_made") return dateMatch;
+
+            return nameMatch || dateMatch;
+        });
+
+        const sortType = document.getElementById("sortSelect").value;
+        if (sortType === "name_asc") filtered.sort((a, b) => (a.item_name || "").localeCompare(b.item_name || ""));
+        else if (sortType === "name_desc") filtered.sort((a, b) => (b.item_name || "").localeCompare(a.item_name || ""));
+        else if (sortType === "date_asc") filtered.sort((a, b) => new Date(a.date_made || 0) - new Date(b.date_made || 0));
+        else if (sortType === "date_desc") filtered.sort((a, b) => new Date(b.date_made || 0) - new Date(a.date_made || 0));
+
+        renderInventory(filtered);
+    }
+
+    async function deleteItem(id) {
+        if (!confirm("Are you sure you want to delete this item?")) return;
+        
+        let formData = new FormData();
+        formData.append("id", id);
+
+        try {
+            let response = await fetch("../php/admin_api.php?action=delete_inventory", {
+                method: "POST",
+                body: formData
+            });
+            let res = await response.json();
+            if (res.status === "success") {
+                alert("Item deleted successfully.");
+                await loadInventory();
+            } else {
+                alert(res.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error deleting item.");
+        }
+    }
+  </script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        let res = await fetch('../php/fetch_data.php?target=account');
+        let data = await res.json();
+        let sidebar = document.getElementById('sidebarLinks');
+        if (data.status === 'error' || !data.email) {
+            // Not logged in
+            if (sidebar) {
+                sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+            }
+        }
+    } catch(e) {
+        let sidebar = document.getElementById('sidebarLinks');
+        if (sidebar) {
+            sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+        }
+    }
+  });
+</script>
+
+</body>
+</html>

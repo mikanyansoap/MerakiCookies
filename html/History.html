@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order History - Meraki 🍪</title>
+  <link rel="stylesheet" href="../css/Style.css">
+</head>
+<body class="hist-body">
+
+<section class="hist-container">
+<header class="hist-header">
+  <h1 class="logo">Meraki 🍪</h1>
+  <div class="hist-nav">
+    <h2 class="hist-title">Order History Records</h2>
+  </div>
+</header>
+
+    <table class="hist-table">
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Date</th>
+          <th>Item</th>
+          <th>Quantity</th>
+          <th>Payment</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <!-- Added an ID here so the Javascript can find it and populate your data -->
+      <tbody id="historyTableBody">
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  
+    <div class="acct-left">
+    <button class="back" onclick="window.location.href='home.html'" title="Go back">← Back</button>
+  </div>
+  
+  </section>
+
+  <!-- DATABASE DATA INTEGRATION BRIDGE -->
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        const tbody = document.getElementById("historyTableBody");
+
+        try {
+            // Fetch the logged-in customer's orders from your PHP script
+            let response = await fetch('../php/fetch_data.php?target=history');
+            let orders = await response.json();
+
+            // Clear the empty placeholder row
+            tbody.innerHTML = "";
+
+            if (orders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">You haven't placed any orders yet! 🍪</td></tr>`;
+                return;
+            }
+
+            // Loop through the data array from SQL and build rows matching your exact schema
+            orders.forEach(order => {
+                let row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>#${order.order_id}</td>
+                    <td>${new Date(order.date).toLocaleDateString()}</td>
+                    <td>${order.item}</td>
+                    <td>${order.quantity}</td>
+                    <td>${order.payment}</td>
+                    <td>${order.status}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+        } catch (error) {
+            console.error("Error loading history:", error);
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Failed to load order history.</td></tr>`;
+        }
+    });
+  </script>
+
+</body>
+</html>

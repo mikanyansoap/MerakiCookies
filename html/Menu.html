@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu - Meraki 🍪</title>
+    <link rel="stylesheet" href="../css/Style.css">
+</head>
+<body>
+
+  <header>
+    <h1>Meraki 🍪</h1>
+  </header>
+
+  <header class="topbar">
+    <img src="../img/profile.png" alt="Profile" class="profile" onclick="toggleProfileMenu()" width="50" height="50">
+  </header>
+
+<aside id="profileMenu" class="customer-menu">
+      <header>
+      <img src="../img/profile.png" alt="Profile" class="profile" onclick="toggleProfileMenu()" width="50" height="50">
+      <h1>Meraki 🍪</h1>
+	  </header>
+  <ul id="sidebarLinks">
+    <li><a href="../html/Account.html">Account</a></li>
+    <li><a href="../html/History.html">History</a></li>
+    <li><a href="../html/Login.html">Log Out</a></li>
+  </ul>
+    <button class="close-btn" onclick="toggleProfileMenu()">←</button>
+</aside>
+
+  <nav>
+    <ul>
+      <li><a href="../html/Home.html">Home</a></li>
+      <li><a href="../html/Menu.html" class="active">Menu</a></li>
+      <li><a href="../html/Order.html">Order</a></li>
+      <li><a href="../html/Reviews.html">Reviews</a></li>
+    </ul>
+  </nav>
+
+    <hr>
+
+    <main>
+
+        <section>
+            <figure>
+                <img src="../img/chocolatechip.png" alt="Classic Chocolate Chip" width="336" height="192">
+                <figcaption>Classic Chocolate Chip – 45 PHP (A timeless favorite, never goes out of style!)</figcaption>
+            </figure>
+        </section>
+
+        <section>
+            <figure>
+                <img src="../img/redvelvet.png" alt="Rich Red Velvet" width="336" height="192">
+                <figcaption>Velvety Red Velvet – 50 PHP (A rich, velvety indulgence that's as bold as it is delicious!)</figcaption>
+            </figure>
+        </section>
+
+        <section>
+            <figure>
+                <img src="../img/smores.png" alt="S'mores Cookie" width="336" height="192">
+                <figcaption>Gooey S'mores – 50 PHP (Because who doesn't love a little campfire magic?)</figcaption>
+            </figure>
+        </section>
+
+        <section>
+            <figure>
+                <img src="../img/comingsoon.png" alt="Coming Soon" width="336" height="192">
+                <figcaption>Coming Soon!</figcaption>
+            </figure>
+        </section>
+
+    </main>
+
+    <hr>
+
+    <footer>
+        <p>&copy; 2026 Meraki Cookies. Made with soul, creativity, and love.</p>
+    </footer>
+
+  <script>
+  function toggleProfileMenu() {
+    let menu = document.getElementById("profileMenu");
+    if (menu.style.left === "0px") {
+      menu.style.left = "-300px";
+    } else {
+      menu.style.left = "0px";
+    }
+  }
+  </script>
+  
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        let res = await fetch('../php/fetch_data.php?target=account');
+        let data = await res.json();
+        let sidebar = document.getElementById('sidebarLinks');
+        if (data.status === 'error' || !data.email) {
+            // Not logged in
+            if (sidebar) {
+                sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+            }
+        }
+    } catch(e) {
+        let sidebar = document.getElementById('sidebarLinks');
+        if (sidebar) {
+            sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+        }
+    }
+  });
+</script>
+
+</body>
+</html>

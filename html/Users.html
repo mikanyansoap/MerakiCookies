@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - Meraki 🍪</title>
+    <link rel="stylesheet" href="../css/Style.css">
+</head>
+
+<body class="database">
+
+    <aside class="sidebar">
+        <header>
+            <h1>Meraki 🍪</h1>
+        </header>
+
+        <nav>
+            <ul>
+                <li><a href="../html/Orders.html">⮞ ORDERS</a></li>
+                <li><a href="../html/Records.html">⮞ RECORDS</a></li>
+                <li><a href="../html/Feedback.html">⮞ FEEDBACK</a></li>
+                <li><a href="../html/Record.html">⮞ RECORDS MANAGEMENT</a></li>
+                <li><a href="../html/Users.html" class="active">⮞ USER MANAGEMENT</a></li>
+                <li><a href="../html/Inventory.html">⮞ INVENTORY</a></li>
+                <li><a href="../html/Login.html">⮞ LOG OUT</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <div class="filter-bar">
+            <input type="text" id="searchInput" placeholder="Search users..." onkeyup="filterUsers()">
+            <select id="filterSelect" onchange="filterUsers()">
+                <option value="">Filter By...</option>
+                <option value="name">Name</option>
+                <option value="email">Email</option>
+                <option value="phone">Phone</option>
+                <option value="role">Role</option>
+            </select>
+            <select id="sortSelect" onchange="filterUsers()">
+                <option value="">Sort By...</option>
+                <option value="name_asc">Name (A-Z)</option>
+                <option value="name_desc">Name (Z-A)</option>
+                <option value="date_asc">Date (Ascending)</option>
+                <option value="date_desc">Date (Descending)</option>
+            </select>
+            <button onclick="filterUsers()">Apply</button>
+        </div>
+
+        <table id="userTable" class="records">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Role</th>
+                    <th>Gender</th>
+                    <th>Address</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="userTableBody">
+                <tr>
+                    <td colspan="8" style="text-align:center;">Loading users...</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="text-align: right; margin-top: 15px;">
+            <button type="button" class="btn-action btn-success" onclick="addNewUserRow()"
+                style="font-size:1.1rem; font-weight:bold; border-radius:24px;">+ Add User</button>
+        </div>
+    </main>
+
+    <script>
+        let allUsers = [];
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            await loadUsers();
+        });
+
+        async function loadUsers() {
+            const tbody = document.getElementById("userTableBody");
+            try {
+                let response = await fetch('../php/admin_api.php?action=get_users');
+                let res = await response.json();
+                tbody.innerHTML = "";
+
+                if (res.status === "success") {
+                    allUsers = res.data;
+                    renderUsers(allUsers);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">${res.message}</td></tr>`;
+                }
+            } catch (error) {
+                console.error("Error loading users:", error);
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:red;">Failed to load records.</td></tr>`;
+            }
+        }
+
+        function renderUsers(usersList) {
+            const tbody = document.getElementById("userTableBody");
+            tbody.innerHTML = "";
+
+            if (usersList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No users found. Click '+ Add User' to create one.</td></tr>`;
+                return;
+            }
+
+            usersList.forEach(user => {
+                let row = document.createElement("tr");
+                row.id = `row-${user.id}`;
+                row.innerHTML = `
+                <td>${user.id}</td>
+                <td>${user.name}</td>
+                <td>${user.email}</td>
+                <td>${user.phone}</td>
+                <td><span style="font-weight:bold; text-transform:uppercase; padding:3px 8px; border-radius:8px; background:${user.role === 'admin' ? '#007bff' : '#6c757d'}; color:white;">${user.role}</span></td>
+                <td>${user.gender || '-'}</td>
+                <td>${user.address || '-'}</td>
+                <td>
+                    <button onclick="editUser(${user.id})" class="btn-action" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Edit</button>
+                    <button onclick="deleteUser(${user.id})" class="btn-action btn-danger" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Delete</button>
+                </td>
+            `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterUsers() {
+            const query = document.getElementById("searchInput").value.toLowerCase();
+            const filterType = document.getElementById("filterSelect").value;
+
+            let filtered = allUsers.filter(user => {
+                const nameMatch = (user.name || '').toLowerCase().includes(query);
+                const emailMatch = (user.email || '').toLowerCase().includes(query);
+                const phoneMatch = (user.phone || '').toLowerCase().includes(query);
+                const roleMatch = (user.role || '').toLowerCase().includes(query);
+
+                if (filterType === "name") return nameMatch;
+                if (filterType === "email") return emailMatch;
+                if (filterType === "phone") return phoneMatch;
+                if (filterType === "role") return roleMatch;
+
+                return nameMatch || emailMatch || phoneMatch || roleMatch;
+            });
+
+            const sortType = document.getElementById("sortSelect").value;
+            if (sortType === "name_asc") filtered.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+            else if (sortType === "name_desc") filtered.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+            else if (sortType === "date_asc") filtered.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+            else if (sortType === "date_desc") filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+            renderUsers(filtered);
+        }
+
+        function addNewUserRow() {
+            const tbody = document.getElementById("userTableBody");
+
+            if (tbody.children.length === 1 && tbody.children[0].cells.length === 1) {
+                tbody.innerHTML = "";
+            }
+
+            const newRow = document.createElement("tr");
+            newRow.innerHTML = `
+            <td>-</td>
+            <td><input type="text" id="add-name" placeholder="Name" style="width:90%"></td>
+            <td><input type="email" id="add-email" placeholder="Email" style="width:90%"></td>
+            <td><input type="text" id="add-phone" placeholder="Phone" style="width:90%"></td>
+            <td>
+                <select id="add-role" style="width:90%; padding:4px;">
+                    <option value="customer">Customer</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </td>
+            <td>
+                <select id="add-gender" style="width:90%; padding:4px;">
+                    <option value="">Select</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Non-binary">Non-binary</option>
+                </select>
+            </td>
+            <td><input type="text" id="add-address" placeholder="Address" style="width:90%"></td>
+            <td>
+                <input type="password" id="add-password" placeholder="Password" style="width:90%; margin-bottom:5px;"><br>
+                <button onclick="saveNewUser()" class="btn-action btn-success" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Save</button>
+                <button onclick="loadUsers()" class="btn-action btn-secondary" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Cancel</button>
+            </td>
+        `;
+            tbody.insertBefore(newRow, tbody.firstChild);
+        }
+
+        async function saveNewUser() {
+            const name = document.getElementById("add-name").value.trim();
+            const email = document.getElementById("add-email").value.trim();
+            const phone = document.getElementById("add-phone").value.trim();
+            const role = document.getElementById("add-role").value;
+            const gender = document.getElementById("add-gender").value;
+            const address = document.getElementById("add-address").value.trim();
+            const password = document.getElementById("add-password").value;
+
+            if (!name || !email || !phone || !password) {
+                alert("Name, Email, Phone, and Password are required.");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("name", name);
+            formData.append("email", email);
+            formData.append("phone", phone);
+            formData.append("role", role);
+            formData.append("gender", gender);
+            formData.append("address", address);
+            formData.append("password", password);
+
+            try {
+                let response = await fetch("../php/admin_api.php?action=add_user", {
+                    method: "POST",
+                    body: formData
+                });
+                let res = await response.json();
+                if (res.status === "success") {
+                    alert("User added successfully.");
+                    await loadUsers();
+                } else {
+                    alert(res.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error adding user.");
+            }
+        }
+
+        function editUser(id) {
+            const user = allUsers.find(u => u.id === id);
+            if (!user) return;
+
+            const row = document.getElementById(`row-${id}`);
+            row.innerHTML = `
+            <td>${id}</td>
+            <td><input type="text" id="edit-name-${id}" value="${user.name}" style="width:90%"></td>
+            <td><input type="email" id="edit-email-${id}" value="${user.email}" style="width:90%"></td>
+            <td><input type="text" id="edit-phone-${id}" value="${user.phone}" style="width:90%"></td>
+            <td>
+                <select id="edit-role-${id}" style="width:90%; padding:4px;">
+                    <option value="customer" ${user.role === 'customer' ? 'selected' : ''}>Customer</option>
+                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                </select>
+            </td>
+            <td>
+                <select id="edit-gender-${id}" style="width:90%; padding:4px;">
+                    <option value="" ${!user.gender ? 'selected' : ''}>Select</option>
+                    <option value="Male" ${user.gender === 'Male' ? 'selected' : ''}>Male</option>
+                    <option value="Female" ${user.gender === 'Female' ? 'selected' : ''}>Female</option>
+                    <option value="Non-binary" ${user.gender === 'Non-binary' ? 'selected' : ''}>Non-binary</option>
+                </select>
+            </td>
+            <td><input type="text" id="edit-address-${id}" value="${user.address || ''}" style="width:90%"></td>
+            <td>
+                <input type="password" id="edit-password-${id}" placeholder="New Password (optional)" style="width:90%; margin-bottom:5px;"><br>
+                <button onclick="saveUserEdit(${id})" class="btn-action btn-success" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Save</button>
+                <button onclick="loadUsers()" class="btn-action btn-secondary" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Cancel</button>
+            </td>
+        `;
+        }
+
+        async function saveUserEdit(id) {
+            const name = document.getElementById(`edit-name-${id}`).value.trim();
+            const email = document.getElementById(`edit-email-${id}`).value.trim();
+            const phone = document.getElementById(`edit-phone-${id}`).value.trim();
+            const role = document.getElementById(`edit-role-${id}`).value;
+            const gender = document.getElementById(`edit-gender-${id}`).value;
+            const address = document.getElementById(`edit-address-${id}`).value.trim();
+            const password = document.getElementById(`edit-password-${id}`).value;
+
+            if (!name || !email || !phone) {
+                alert("Name, Email, and Phone are required.");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("id", id);
+            formData.append("name", name);
+            formData.append("email", email);
+            formData.append("phone", phone);
+            formData.append("role", role);
+            formData.append("gender", gender);
+            formData.append("address", address);
+            if (password) {
+                formData.append("password", password);
+            }
+
+            try {
+                let response = await fetch("../php/admin_api.php?action=update_user", {
+                    method: "POST",
+                    body: formData
+                });
+                let res = await response.json();
+                if (res.status === "success") {
+                    alert("User updated successfully.");
+                    await loadUsers();
+                } else {
+                    alert(res.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error updating user.");
+            }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm("Are you sure you want to delete this user?")) return;
+
+            let formData = new FormData();
+            formData.append("id", id);
+
+            try {
+                let response = await fetch("../php/admin_api.php?action=delete_user", {
+                    method: "POST",
+                    body: formData
+                });
+                let res = await response.json();
+                if (res.status === "success") {
+                    alert("User deleted successfully.");
+                    await loadUsers();
+                } else {
+                    alert(res.message);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error deleting user.");
+            }
+        }
+    </script>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                let res = await fetch('../php/fetch_data.php?target=account');
+                let data = await res.json();
+                let sidebar = document.getElementById('sidebarLinks');
+                if (data.status === 'error' || !data.email) {
+                    // Not logged in
+                    if (sidebar) {
+                        sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+                    }
+                }
+            } catch (e) {
+                let sidebar = document.getElementById('sidebarLinks');
+                if (sidebar) {
+                    sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+                }
+            }
+        });
+    </script>
+
+</body>
+
+</html>

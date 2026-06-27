@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reviews - Meraki 🍪</title>
+    <link rel="stylesheet" href="../css/Style.css">
+</head>
+<body>
+
+  <header>
+    <h1>Meraki 🍪</h1>
+  </header>
+
+  <header class="topbar">
+    <img src="../img/profile.png" alt="Profile" class="profile" onclick="toggleProfileMenu()" width="50" height="50">
+  </header>
+
+<aside id="profileMenu" class="customer-menu">
+      <header>
+      <img src="../img/profile.png" alt="Profile" class="profile" onclick="toggleProfileMenu()" width="50" height="50">
+      <h1>Meraki 🍪</h1>
+	  </header>
+  <ul id="sidebarLinks">
+    <li><a href="../html/Account.html">Account</a></li>
+    <li><a href="../html/History.html">History</a></li>
+    <li><a href="../html/Login.html">Log Out</a></li>
+  </ul>
+    <button class="close-btn" onclick="toggleProfileMenu()">←</button>
+</aside>
+
+  <nav>
+    <ul>
+      <li><a href="../html/Home.html">Home</a></li>
+      <li><a href="../html/Menu.html">Menu</a></li>
+      <li><a href="../html/Order.html">Order</a></li>
+      <li><a href="../html/Reviews.html" class="active">Reviews</a></li>
+    </ul>
+  </nav>
+
+    <hr>
+
+    <main style="display:block;">
+
+
+
+        <section>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Customer Reviews</h2>
+                <button class="btn-action btn-success" onclick="openReviewModal()">Add Review +</button>
+            </div>
+            <div id="reviewsContainer" class="reviews-grid">
+                <p>Loading reviews...</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Follow Us!</h2>
+            <p>Instagram: <a href="https://tinyurl.com/Merakookies" target="_blank">@Merakookies</a></p>
+            <p>Facebook: <a href="https://tinyurl.com/MerakiCookies" target="_blank">Meraki</a></p>
+        </section>
+
+    </main>
+
+    <!-- Feedback Modal -->
+    <div id="reviewModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn-modal" onclick="closeReviewModal()">&times;</span>
+            <h2>Customer Feedback</h2>
+            <p>We value your thoughts! Please fill out the form below:</p>
+
+        <form id="feedbackForm" onsubmit="submitFeedback(event)">
+
+            <p>
+                <label>Rate your experience:</label><br>
+                <div class="star-rating" id="starRating">
+                    <span class="star checked" data-value="1" onclick="setRating(1)">★</span>
+                    <span class="star checked" data-value="2" onclick="setRating(2)">★</span>
+                    <span class="star checked" data-value="3" onclick="setRating(3)">★</span>
+                    <span class="star checked" data-value="4" onclick="setRating(4)">★</span>
+                    <span class="star checked" data-value="5" onclick="setRating(5)">★</span>
+                </div>
+                <input type="hidden" name="rating" id="ratingInput" value="5">
+            </p>
+
+            <p>
+                <label for="alias">What should we call you? (Alias/Nickname)</label><br>
+                <input type="text" id="alias" name="Customer_Alias" placeholder="Optional">
+            </p>
+
+            <p>
+                <label for="likes">What do you like most about our product/service?</label><br>
+                <textarea id="likes" name="likes" rows="5" cols="40" required></textarea>
+            </p>
+
+            <p>
+                <label for="improvements">What can we do to improve your experience?</label><br>
+                <textarea id="improvements" name="improvements" rows="5" cols="40"></textarea>
+            </p>
+
+            <p>
+                <label for="additional">Any additional comments or suggestions?</label><br>
+                <textarea id="additional" name="additional" rows="5" cols="40"></textarea>
+            </p>
+
+            <p>
+                <button type="submit">Submit Feedback</button>
+                <input type="reset" value="Clear Form">
+            </p>
+
+        </form>
+        </div>
+    </div>
+
+    <hr>
+
+    <footer>
+        <p>&copy; 2026 Meraki Cookies. Made with soul, creativity, and love.</p>
+    </footer>
+
+    <div id="toast-container"></div>
+
+  <script>
+  function setRating(val) {
+      document.getElementById('ratingInput').value = val;
+      let stars = document.querySelectorAll('.star-rating .star');
+      stars.forEach(star => {
+          if (parseInt(star.getAttribute('data-value')) <= val) {
+              star.classList.add('checked');
+          } else {
+              star.classList.remove('checked');
+          }
+      });
+  }
+
+  function openReviewModal() {
+      document.getElementById('reviewModal').style.display = 'flex';
+  }
+
+  function closeReviewModal() {
+      document.getElementById('reviewModal').style.display = 'none';
+  }
+
+  async function loadReviews() {
+      const container = document.getElementById('reviewsContainer');
+      try {
+          let res = await fetch('../php/fetch_data.php?target=feedback');
+          let data = await res.json();
+          if (data.length === 0) {
+              container.innerHTML = '<p>No reviews yet. Be the first to leave one!</p>';
+              return;
+          }
+          let html = '';
+          data.forEach(review => {
+              let stars = '⭐'.repeat(review.rating || 5);
+              html += `<div class="review-card">
+                  <h3>${review.name}</h3>
+                  <div class="stars">${stars}</div>
+                  <p><strong>Likes:</strong> ${review.likes}</p>
+                  ${review.improvements ? `<p><strong>Improvements:</strong> ${review.improvements}</p>` : ''}
+                  ${review.additional ? `<p><strong>Additional:</strong> ${review.additional}</p>` : ''}
+              </div>`;
+          });
+          container.innerHTML = html;
+      } catch(e) {
+          container.innerHTML = '<p>Failed to load reviews.</p>';
+      }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+      loadReviews();
+  });
+  function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 400);
+    }, 3000);
+  }
+
+  function toggleProfileMenu() {
+    let menu = document.getElementById("profileMenu");
+    if (menu.style.left === "0px") {
+      menu.style.left = "-300px";
+    } else {
+      menu.style.left = "0px";
+    }
+  }
+
+  async function submitFeedback(event) {
+    event.preventDefault();
+    const form = document.getElementById('feedbackForm');
+    const formData = new FormData(form);
+
+    try {
+        let response = await fetch('../php/store.php?action=submit_feedback', {
+            method: 'POST',
+            body: formData
+        });
+        let data = await response.json();
+        if (data.status === 'success') {
+            showToast('Thank you for your feedback! 🍪');
+            form.reset();
+            loadReviews();
+            closeReviewModal();
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Failed to submit feedback. Ensure PHP server is running.', 'error');
+    }
+  }
+  </script>
+  
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        let res = await fetch('../php/fetch_data.php?target=account');
+        let data = await res.json();
+        let sidebar = document.getElementById('sidebarLinks');
+        if (data.status === 'error' || !data.email) {
+            // Not logged in
+            if (sidebar) {
+                sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+            }
+        }
+    } catch(e) {
+        let sidebar = document.getElementById('sidebarLinks');
+        if (sidebar) {
+            sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+        }
+    }
+  });
+</script>
+
+</body>
+</html>

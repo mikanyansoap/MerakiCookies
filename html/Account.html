@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account - Meraki 🍪</title>
+  <link rel="stylesheet" href="../css/Style.css">
+</head>
+
+<body class="acct-body">
+
+<section class="acct-container">
+  <header class="acct-header">
+    <h1 class="logo">Meraki 🍪</h1>
+    <div class="acct-nav">
+      <h2 class="acct-title">Account Information</h2>
+    </div>
+  </header>
+
+  <form class="acct-form" id="accountForm" onsubmit="saveAccount(event)">
+
+    <h3 class="acct-section-title">Basic Information</h3>
+    <table class="acct-table">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Full Name</td>
+          <td><input type="text" id="acctName" name="name" class="acct-field" placeholder="Enter full name" required></td>
+        </tr>
+        <tr>
+          <td>Email Address</td>
+          <td><input type="email" id="acctEmail" name="email" class="acct-field" placeholder="Enter email" required></td>
+        </tr>
+        <tr>
+          <td>Phone</td>
+          <td><input type="tel" id="acctPhone" name="phone" class="acct-field" placeholder="Enter phone number" required></td>
+        </tr>
+        <tr>
+          <td>Password</td>
+          <td><input type="password" id="acctPassword" name="password" class="acct-field" placeholder="Enter new password (optional)"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 class="acct-section-title">Additional Information</h3>
+    <table class="acct-table">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Role</td>
+          <td>
+            <select id="acctRole" name="role" class="acct-field">
+              <option value="customer">Customer</option>
+              <option value="admin">Admin</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td>Address</td>
+          <td><textarea id="acctAddress" name="address" class="acct-field" rows="2" placeholder="Enter address"></textarea></td>
+        </tr>
+        <tr>
+          <td>Gender</td>
+		  <td>
+            <select id="acctGender" name="gender" class="acct-field">
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+			  <option value="Non-binary">Non-binary</option>
+            </select>
+		</td>
+		</tr>
+		<tr>
+			<td>Link Account</td>
+			<td class="link-account-cell">
+				<div id="link-accounts">
+					<input type="url" id="acctLinks" name="links" class="acct-field" placeholder="Enter link">
+				</div>
+			</td>
+		</tr>
+      </tbody>
+    </table>
+
+    <div class="acct-right">
+      <button type="submit" class="acct-save">Save Changes</button>
+      <input type="reset" value="Clear Form">
+    </div>
+  </form>
+
+  <div class="acct-actions">
+    <div class="acct-left">
+      <button type="button" class="back" onclick="goBack()" title="Go back">← Back</button>
+    </div>
+  </div>
+
+</section>
+
+<script>
+let userRole = 'customer';
+
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadAccountData();
+});
+
+async function loadAccountData() {
+    try {
+        let response = await fetch('../php/fetch_data.php?target=account');
+        let data = await response.json();
+        
+        if (data.name) {
+            document.getElementById("acctName").value = data.name;
+            document.getElementById("acctEmail").value = data.email;
+            document.getElementById("acctPhone").value = data.phone;
+            document.getElementById("acctRole").value = data.role;
+            document.getElementById("acctAddress").value = data.address || '';
+            document.getElementById("acctGender").value = data.gender || '';
+            document.getElementById("acctLinks").value = data.links || '';
+            userRole = data.role;
+        }
+    } catch(e) {
+        console.error("Error loading account data:", e);
+    }
+}
+
+async function saveAccount(event) {
+    event.preventDefault();
+    const form = document.getElementById("accountForm");
+    const formData = new FormData(form);
+
+    try {
+        let response = await fetch('../php/store.php?action=update_account', {
+            method: 'POST',
+            body: formData
+        });
+        let res = await response.json();
+        if (res.status === 'success') {
+            alert('Profile updated successfully! 🍪');
+            await loadAccountData();
+        } else {
+            alert(res.message);
+        }
+    } catch(e) {
+        console.error(e);
+        alert('Failed to save profile changes.');
+    }
+}
+
+function goBack() {
+    window.location.href = (userRole === 'admin') ? "records.html" : "home.html";
+}
+</script>
+
+</body>
+</html>
