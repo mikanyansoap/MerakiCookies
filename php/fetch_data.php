@@ -22,13 +22,13 @@ if ($target === 'history') {
 }
 
 if ($target === 'feedback') {
-    $stmt = $pdo->query("SELECT id, name, likes, improvements, additional, rating FROM feedback ORDER BY id DESC");
+    $stmt = $pdo->query("SELECT feedback_id AS id, name, likes, improvements, additional, rating FROM feedback ORDER BY feedback_id DESC");
     echo json_encode($stmt->fetchAll());
 }
 
 if ($target === 'account') {
     $user_id = $_SESSION['user_id'] ?? 0;
-    $stmt = $pdo->prepare("SELECT name, email, phone, role, address, gender, links FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT name, email, phone, role, address, gender, links FROM users WHERE user_id = ?");
     $stmt->execute([$user_id]);
     echo json_encode($stmt->fetch() ?: new stdClass());
 }
