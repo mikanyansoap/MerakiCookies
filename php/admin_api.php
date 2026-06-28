@@ -14,7 +14,7 @@ try {
     switch ($action) {
         // --- ORDERS CRUD ---
         case 'get_orders':
-            $stmt = $pdo->query("SELECT * FROM orders ORDER BY id DESC");
+            $stmt = $pdo->query("SELECT o.order_id AS id, o.user_id, o.customer_name AS customer_name, o.customer_phone, GROUP_CONCAT(CONCAT(oi.quantity, 'x ', p.product_name) SEPARATOR ', ') AS order_details, o.delivery_method, o.payment_method, o.special_notes, o.status, o.total_amount, o.created_at FROM orders o LEFT JOIN order_items oi ON o.order_id = oi.order_id LEFT JOIN products p ON oi.product_id = p.product_id GROUP BY o.order_id ORDER BY o.order_id DESC");
             echo json_encode(["status" => "success", "data" => $stmt->fetchAll()]);
             break;
 
@@ -28,13 +28,19 @@ try {
             $status = trim($_POST['status'] ?? 'Pending');
             $user_id = !empty($_POST['user_id']) ? intval($_POST['user_id']) : null;
 
-            if (empty($name) || empty($phone) || empty($details)) {
-                echo json_encode(["status" => "error", "message" => "Name, Phone, and Order Details are required."]);
+            if (empty($name) || empty($phone)) {
+                echo json_encode(["status" => "error", "message" => "Name and Phone are required."]);
                 break;
             }
 
-            $stmt = $pdo->prepare("INSERT INTO orders (user_id, customer_name, customer_phone, order_details, delivery_method, payment_method, special_notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$user_id, $name, $phone, $details, $delivery, $payment, $notes, $status]);
+            // Combine details into special_notes since order_details column doesn't exist
+            $combined_notes = $notes;
+            if (!empty($details)) {
+                $combined_notes = trim($details . ($notes ? ' | ' . $notes : ''));
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO orders (user_id, customer_name, customer_phone, special_notes, delivery_method, payment_method, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$user_id, $name, $phone, $combined_notes, $delivery, $payment, $status]);
             echo json_encode(["status" => "success", "id" => $pdo->lastInsertId()]);
             break;
 
@@ -49,13 +55,18 @@ try {
             $status = trim($_POST['status'] ?? 'Pending');
             $user_id = !empty($_POST['user_id']) ? intval($_POST['user_id']) : null;
 
-            if (!$id || empty($name) || empty($phone) || empty($details)) {
-                echo json_encode(["status" => "error", "message" => "ID, Name, Phone, and Order Details are required."]);
+            if (!$id || empty($name) || empty($phone)) {
+                echo json_encode(["status" => "error", "message" => "ID, Name, and Phone are required."]);
                 break;
             }
 
-            $stmt = $pdo->prepare("UPDATE orders SET user_id = ?, customer_name = ?, customer_phone = ?, order_details = ?, delivery_method = ?, payment_method = ?, special_notes = ?, status = ? WHERE id = ?");
-            $stmt->execute([$user_id, $name, $phone, $details, $delivery, $payment, $notes, $status, $id]);
+            $combined_notes = $notes;
+            if (!empty($details)) {
+                $combined_notes = trim($details . ($notes ? ' | ' . $notes : ''));
+            }
+
+            $stmt = $pdo->prepare("UPDATE orders SET user_id = ?, customer_name = ?, customer_phone = ?, delivery_method = ?, payment_method = ?, special_notes = ?, status = ? WHERE order_id = ?");
+            $stmt->execute([$user_id, $name, $phone, $delivery, $payment, $combined_notes, $status, $id]);
             echo json_encode(["status" => "success"]);
             break;
 
@@ -65,14 +76,18 @@ try {
                 echo json_encode(["status" => "error", "message" => "ID is required."]);
                 break;
             }
-            $stmt = $pdo->prepare("DELETE FROM orders WHERE id = ?");
+            // Delete associated order_items first
+            $stmt = $pdo->prepare("DELETE FROM order_items WHERE order_id = ?");
+            $stmt->execute([$id]);
+            // Then delete the order
+            $stmt = $pdo->prepare("DELETE FROM orders WHERE order_id = ?");
             $stmt->execute([$id]);
             echo json_encode(["status" => "success"]);
             break;
 
         // --- USERS CRUD ---
         case 'get_users':
-            $stmt = $pdo->query("SELECT id, name, email, phone, role, address, gender, links, created_at FROM users ORDER BY id DESC");
+            $stmt = $pdo->query("SELECT user_id AS id, name, email, phone, role, address, gender, links, created_at FROM users ORDER BY user_id DESC");
             echo json_encode(["status" => "success", "data" => $stmt->fetchAll()]);
             break;
 
@@ -115,10 +130,10 @@ try {
             // Optional password update
             if (!empty($_POST['password'])) {
                 $hashed = password_hash($_POST['password'], PASSWORD_BCRYPT);
-                $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, phone = ?, role = ?, address = ?, gender = ?, links = ?, password = ? WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, phone = ?, role = ?, address = ?, gender = ?, links = ?, password = ? WHERE user_id = ?");
                 $stmt->execute([$name, $email, $phone, $role, $address, $gender, $links, $hashed, $id]);
             } else {
-                $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, phone = ?, role = ?, address = ?, gender = ?, links = ? WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, phone = ?, role = ?, address = ?, gender = ?, links = ? WHERE user_id = ?");
                 $stmt->execute([$name, $email, $phone, $role, $address, $gender, $links, $id]);
             }
             echo json_encode(["status" => "success"]);
@@ -135,14 +150,14 @@ try {
                 echo json_encode(["status" => "error", "message" => "You cannot delete your own admin account while logged in."]);
                 break;
             }
-            $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+            $stmt = $pdo->prepare("DELETE FROM users WHERE user_id = ?");
             $stmt->execute([$id]);
             echo json_encode(["status" => "success"]);
             break;
 
         // --- FEEDBACK CRUD ---
         case 'get_feedbacks':
-            $stmt = $pdo->query("SELECT * FROM feedback ORDER BY id DESC");
+            $stmt = $pdo->query("SELECT feedback_id AS id, name, likes, improvements, additional, rating FROM feedback ORDER BY feedback_id DESC");
             echo json_encode(["status" => "success", "data" => $stmt->fetchAll()]);
             break;
 
@@ -174,7 +189,7 @@ try {
                 break;
             }
 
-            $stmt = $pdo->prepare("UPDATE feedback SET name = ?, likes = ?, improvements = ?, additional = ? WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE feedback SET name = ?, likes = ?, improvements = ?, additional = ? WHERE feedback_id = ?");
             $stmt->execute([$name, $likes, $improvements, $additional, $id]);
             echo json_encode(["status" => "success"]);
             break;
@@ -185,47 +200,51 @@ try {
                 echo json_encode(["status" => "error", "message" => "ID is required."]);
                 break;
             }
-            $stmt = $pdo->prepare("DELETE FROM feedback WHERE id = ?");
+            $stmt = $pdo->prepare("DELETE FROM feedback WHERE feedback_id = ?");
             $stmt->execute([$id]);
             echo json_encode(["status" => "success"]);
             break;
 
         // --- INVENTORY CRUD ---
         case 'get_inventory':
-            $stmt = $pdo->query("SELECT * FROM inventory ORDER BY id DESC");
+            $stmt = $pdo->query("SELECT product_id AS id, product_name AS item_name, quantity, price, date_made, description FROM products ORDER BY product_id DESC");
             echo json_encode(["status" => "success", "data" => $stmt->fetchAll()]);
             break;
 
         case 'add_inventory':
             $item_name = trim($_POST['item_name'] ?? '');
-            $quantity = intval($_POST['quantity'] ?? 0);
             $price = floatval($_POST['price'] ?? 0.0);
-            $date_made = trim($_POST['date_made'] ?? null);
+            $description = trim($_POST['description'] ?? '');
+            $quantity = intval($_POST['quantity'] ?? 0);
+            $date_made = trim($_POST['date_made'] ?? '');
+            $date_made = empty($date_made) ? null : $date_made;
 
             if (empty($item_name)) {
                 echo json_encode(["status" => "error", "message" => "Item Name is required."]);
                 break;
             }
 
-            $stmt = $pdo->prepare("INSERT INTO inventory (item_name, quantity, price, date_made) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$item_name, $quantity, $price, $date_made]);
+            $stmt = $pdo->prepare("INSERT INTO products (product_name, price, description, quantity, date_made) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$item_name, $price, $description, $quantity, $date_made]);
             echo json_encode(["status" => "success", "id" => $pdo->lastInsertId()]);
             break;
 
         case 'update_inventory':
             $id = intval($_POST['id'] ?? 0);
             $item_name = trim($_POST['item_name'] ?? '');
-            $quantity = intval($_POST['quantity'] ?? 0);
             $price = floatval($_POST['price'] ?? 0.0);
-            $date_made = trim($_POST['date_made'] ?? null);
+            $description = trim($_POST['description'] ?? '');
+            $quantity = intval($_POST['quantity'] ?? 0);
+            $date_made = trim($_POST['date_made'] ?? '');
+            $date_made = empty($date_made) ? null : $date_made;
 
             if (!$id || empty($item_name)) {
                 echo json_encode(["status" => "error", "message" => "ID and Item Name are required."]);
                 break;
             }
 
-            $stmt = $pdo->prepare("UPDATE inventory SET item_name = ?, quantity = ?, price = ?, date_made = ? WHERE id = ?");
-            $stmt->execute([$item_name, $quantity, $price, $date_made, $id]);
+            $stmt = $pdo->prepare("UPDATE products SET product_name = ?, price = ?, description = ?, quantity = ?, date_made = ? WHERE product_id = ?");
+            $stmt->execute([$item_name, $price, $description, $quantity, $date_made, $id]);
             echo json_encode(["status" => "success"]);
             break;
 
@@ -235,7 +254,7 @@ try {
                 echo json_encode(["status" => "error", "message" => "ID is required."]);
                 break;
             }
-            $stmt = $pdo->prepare("DELETE FROM inventory WHERE id = ?");
+            $stmt = $pdo->prepare("DELETE FROM products WHERE product_id = ?");
             $stmt->execute([$id]);
             echo json_encode(["status" => "success"]);
             break;

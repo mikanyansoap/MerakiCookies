@@ -9,8 +9,6 @@ if ($action === 'signup') {
     $email = trim($_POST['customer_email'] ?? '');
     $phone = trim($_POST['customer_phone'] ?? '');
     $password = $_POST['customer_password'] ?? '';
-    
-    // All new signups are strictly customers
     $role = 'customer';
 
     if (!$name || !$email || !$phone || !$password) {
@@ -18,14 +16,12 @@ if ($action === 'signup') {
         exit;
     }
 
-    // Securely hash passwords before saving
     $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
     try {
         $stmt = $pdo->prepare("INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$name, $email, $phone, $hashedPassword, $role]);
         
-        // Auto-login upon registration
         $_SESSION['user_id'] = $pdo->lastInsertId();
         $_SESSION['role'] = $role;
         $_SESSION['email'] = $email;
@@ -45,7 +41,7 @@ if ($action === 'login') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_id'] = $user['user_id'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['email'] = $user['email'];
 

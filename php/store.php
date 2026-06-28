@@ -10,17 +10,18 @@ if ($action === 'place_order') {
     $qty_rv = intval($_POST['qty_red_velvet'] ?? 0);
     $qty_sm = intval($_POST['qty_smores'] ?? 0);
 
+    // Build items array with product_id => quantity mapping
+    // product_id 1 = Classic Chocolate Chip, 2 = Velvety Red Velvet, 3 = Gooey S'mores
     $items = [];
-    if ($qty_cc > 0) $items[] = "{$qty_cc}x Classic Chocolate Chip";
-    if ($qty_rv > 0) $items[] = "{$qty_rv}x Velvety Red Velvet";
-    if ($qty_sm > 0) $items[] = "{$qty_sm}x Gooey S'mores";
+    if ($qty_cc > 0) $items[] = ['product_id' => 1, 'qty' => $qty_cc, 'name' => 'Classic Chocolate Chip'];
+    if ($qty_rv > 0) $items[] = ['product_id' => 2, 'qty' => $qty_rv, 'name' => 'Velvety Red Velvet'];
+    if ($qty_sm > 0) $items[] = ['product_id' => 3, 'qty' => $qty_sm, 'name' => "Gooey S'mores"];
 
     if (empty($items)) {
         echo json_encode(["status" => "error", "message" => "Please select at least one cookie."]);
         exit;
     }
 
-    $order_details = implode(", ", $items);
     $payment_method = $_POST['payment_method'] ?? '';
     $customer_name = trim($_POST['customer_name'] ?? '');
     $customer_phone = trim($_POST['customer_phone'] ?? '');
@@ -33,10 +34,39 @@ if ($action === 'place_order') {
         exit;
     }
 
-    $stmt = $pdo->prepare("INSERT INTO orders (user_id, customer_name, customer_phone, order_details, delivery_method, payment_method, special_notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$user_id, $customer_name, $customer_phone, $order_details, $delivery_method, $payment_method, $special_notes]);
+    try {
+        $pdo->beginTransaction();
 
-    echo json_encode(["status" => "success"]);
+        // Look up prices from products table and calculate total
+        $total_amount = 0;
+        $item_details = [];
+        foreach ($items as &$item) {
+            $stmt = $pdo->prepare("SELECT price FROM products WHERE product_id = ?");
+            $stmt->execute([$item['product_id']]);
+            $product = $stmt->fetch();
+            $item['price'] = $product ? floatval($product['price']) : 0;
+            $item['subtotal'] = $item['price'] * $item['qty'];
+            $total_amount += $item['subtotal'];
+        }
+        unset($item);
+
+        // Insert the order
+        $stmt = $pdo->prepare("INSERT INTO orders (user_id, customer_name, customer_phone, delivery_method, payment_method, special_notes, total_amount) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $customer_name, $customer_phone, $delivery_method, $payment_method, $special_notes, $total_amount]);
+        $order_id = $pdo->lastInsertId();
+
+        // Insert order items
+        $stmt = $pdo->prepare("INSERT INTO order_items (order_id, product_id, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)");
+        foreach ($items as $item) {
+            $stmt->execute([$order_id, $item['product_id'], $item['qty'], $item['price'], $item['subtotal']]);
+        }
+
+        $pdo->commit();
+        echo json_encode(["status" => "success"]);
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        echo json_encode(["status" => "error", "message" => "Failed to place order: " . $e->getMessage()]);
+    }
 }
 
 // Handle administrative custom rows or edits from Records Management
@@ -47,8 +77,8 @@ if ($action === 'admin_add_order') {
     $payment = trim($_POST['payment'] ?? '');
     $contact = trim($_POST['contact'] ?? '');
 
-    $stmt = $pdo->prepare("INSERT INTO orders (customer_name, order_details, delivery_method, payment_method, customer_phone) VALUES (?, ?, ?, ?, ?)");
-    $stmt->execute([$name, $order, $delivery, $payment, $contact]);
+    $stmt = $pdo->prepare("INSERT INTO orders (customer_name, customer_phone, delivery_method, payment_method, special_notes) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$name, $contact, $delivery, $payment, $order]);
     echo json_encode(["status" => "success"]);
 }
 
@@ -84,10 +114,8 @@ if ($action === 'update_account') {
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
-    $role = $_POST['role'] ?? 'customer';
     $address = trim($_POST['address'] ?? null);
     $gender = trim($_POST['gender'] ?? null);
-    $links = trim($_POST['links'] ?? null);
 
     if (empty($name) || empty($email) || empty($phone)) {
         echo json_encode(["status" => "error", "message" => "Name, Email, and Phone are required."]);
@@ -96,15 +124,14 @@ if ($action === 'update_account') {
 
     if (!empty($_POST['password'])) {
         $hashed = password_hash($_POST['password'], PASSWORD_BCRYPT);
-        $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, phone = ?, role = ?, address = ?, gender = ?, links = ?, password = ? WHERE id = ?");
-        $stmt->execute([$name, $email, $phone, $role, $address, $gender, $links, $hashed, $user_id]);
+        $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, phone = ?, address = ?, gender = ?, password = ? WHERE user_id = ?");
+        $stmt->execute([$name, $email, $phone, $address, $gender, $hashed, $user_id]);
     } else {
-        $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, phone = ?, role = ?, address = ?, gender = ?, links = ? WHERE id = ?");
-        $stmt->execute([$name, $email, $phone, $role, $address, $gender, $links, $user_id]);
+        $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, phone = ?, address = ?, gender = ? WHERE user_id = ?");
+        $stmt->execute([$name, $email, $phone, $address, $gender, $user_id]);
     }
 
     // Keep session in sync
-    $_SESSION['role'] = $role;
     $_SESSION['email'] = $email;
 
     echo json_encode(["status" => "success"]);

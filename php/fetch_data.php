@@ -5,18 +5,18 @@ require_once "db.php";
 $target = $_GET['target'] ?? '';
 
 if ($target === 'orders') {
-    $stmt = $pdo->query("SELECT id, user_id, customer_name as name, order_details as cookie, (IF(order_details LIKE '%Chocolate%', 45, 0) + IF(order_details LIKE '%Red Velvet%', 50, 0)) as price, created_at as date FROM orders ORDER BY id DESC");
+    $stmt = $pdo->query("SELECT o.order_id AS id, o.user_id, o.customer_name as name, GROUP_CONCAT(CONCAT(oi.quantity, 'x ', p.product_name) SEPARATOR ', ') as cookie, o.total_amount as price, o.created_at as date FROM orders o LEFT JOIN order_items oi ON o.order_id = oi.order_id LEFT JOIN products p ON oi.product_id = p.product_id GROUP BY o.order_id ORDER BY o.order_id DESC");
     echo json_encode($stmt->fetchAll());
 }
 
 if ($target === 'records') {
-    $stmt = $pdo->query("SELECT id, user_id, customer_name as name, order_details as `order`, delivery_method as delivery, payment_method as payment, customer_phone as contact, created_at as date FROM orders ORDER BY id DESC");
+    $stmt = $pdo->query("SELECT o.order_id AS id, o.user_id, o.customer_name as name, GROUP_CONCAT(CONCAT(oi.quantity, 'x ', p.product_name) SEPARATOR ', ') as `order`, o.delivery_method as delivery, o.payment_method as payment, o.customer_phone as contact, o.created_at as date FROM orders o LEFT JOIN order_items oi ON o.order_id = oi.order_id LEFT JOIN products p ON oi.product_id = p.product_id GROUP BY o.order_id ORDER BY o.order_id DESC");
     echo json_encode($stmt->fetchAll());
 }
 
 if ($target === 'history') {
     $user_id = $_SESSION['user_id'] ?? 0;
-    $stmt = $pdo->prepare("SELECT id as order_id, created_at as date, order_details as item, '1' as quantity, payment_method as payment, status FROM orders WHERE user_id = ? ORDER BY id DESC");
+    $stmt = $pdo->prepare("SELECT o.order_id, o.created_at as date, GROUP_CONCAT(CONCAT(oi.quantity, 'x ', p.product_name) SEPARATOR ', ') as item, '1' as quantity, o.payment_method as payment, o.status FROM orders o LEFT JOIN order_items oi ON o.order_id = oi.order_id LEFT JOIN products p ON oi.product_id = p.product_id WHERE o.user_id = ? GROUP BY o.order_id ORDER BY o.order_id DESC");
     $stmt->execute([$user_id]);
     echo json_encode($stmt->fetchAll());
 }
