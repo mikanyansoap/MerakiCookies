@@ -54,7 +54,7 @@ async function checkLogin() {
     let data = await response.json();
 
     if (data.status === 'success') {
-        window.location.href = (data.role === 'admin') ? "records.html" : "home.html";
+        window.location.href = (data.role === 'admin') ? "Records.html" : "Home.html";
     } else {
         alert(data.message);
     }

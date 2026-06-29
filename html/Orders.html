@@ -84,7 +84,8 @@
             }
 
             data.forEach(order => {
-                let parts = order.cookie.split(',');
+                let cookieString = order.cookie ? order.cookie : "Custom Order (No items)";
+                let parts = cookieString.split(',');
                 parts.forEach(part => {
                     let match = part.trim().match(/^(\d+)x\s+(.+)$/);
                     let qty = 1;

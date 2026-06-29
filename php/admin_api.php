@@ -259,6 +259,45 @@ try {
             echo json_encode(["status" => "success"]);
             break;
 
+        case 'backup_db':
+            $dbName = 'meraki_db';
+            $dumpExe = 'C:\xampp\mysql\bin\mysqldump.exe';
+            if (!file_exists($dumpExe)) {
+                echo json_encode(["status" => "error", "message" => "mysqldump not found. Please ensure XAMPP is installed at C:\xampp"]);
+                break;
+            }
+            $filename = 'meraki_backup_' . date('Ymd_His') . '.sql';
+            $filepath = __DIR__ . '/../' . $filename;
+            $command = "\"$dumpExe\" -u root $dbName > \"$filepath\" 2>&1";
+            exec($command, $output, $result_code);
+            if ($result_code === 0) {
+                echo json_encode(["status" => "success", "file" => $filename]);
+            } else {
+                echo json_encode(["status" => "error", "message" => "Backup failed. Output: " . implode(" ", $output)]);
+            }
+            break;
+
+        case 'restore_db':
+            if (!isset($_FILES['backup_file']) || $_FILES['backup_file']['error'] !== UPLOAD_ERR_OK) {
+                echo json_encode(["status" => "error", "message" => "No valid backup file uploaded."]);
+                break;
+            }
+            $dbName = 'meraki_db';
+            $mysqlExe = 'C:\xampp\mysql\bin\mysql.exe';
+            if (!file_exists($mysqlExe)) {
+                echo json_encode(["status" => "error", "message" => "mysql exe not found. Please ensure XAMPP is installed at C:\xampp"]);
+                break;
+            }
+            $tempFile = $_FILES['backup_file']['tmp_name'];
+            $command = "\"$mysqlExe\" -u root $dbName < \"$tempFile\" 2>&1";
+            exec($command, $output, $result_code);
+            if ($result_code === 0) {
+                echo json_encode(["status" => "success", "message" => "Database restored successfully!"]);
+            } else {
+                echo json_encode(["status" => "error", "message" => "Restore failed. Output: " . implode(" ", $output)]);
+            }
+            break;
+
         default:
             echo json_encode(["status" => "error", "message" => "Invalid action."]);
             break;

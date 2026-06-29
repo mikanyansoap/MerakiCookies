@@ -70,7 +70,7 @@
                 row.innerHTML = `
                     <td>#${order.order_id}</td>
                     <td>${new Date(order.date).toLocaleDateString()}</td>
-                    <td>${order.item}</td>
+                    <td>${order.item ? order.item : 'Custom Order'}</td>
                     <td>${order.quantity}</td>
                     <td>${order.payment}</td>
                     <td>${order.status}</td>

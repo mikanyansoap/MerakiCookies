@@ -69,9 +69,7 @@
       </tbody>
     </table>
 	
-    <div style="text-align: right; margin-top: 15px;">
-        <button type="button" class="btn-action btn-success" onclick="addNewRow()" style="font-size:1.1rem; font-weight:bold; border-radius:24px;">+ Add Order</button>
-    </div>
+
 
 
 	
@@ -105,6 +103,33 @@
       </form>
       <p id="successMessage" class="success-message"></p>
     </div>
+
+    <!-- Backup & Restore Section -->
+    <div class="special-requests" style="margin-top: 30px; margin-bottom: 30px; background: #fdfdfd; border: 1px solid #ccc; border-radius: 8px;">
+      <h3>Database Backup & Restore</h3>
+      <p style="font-size: 0.95rem; color: #555; margin-bottom: 15px;">Safely backup your system records or restore from a previous backup file.</p>
+      
+      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <!-- Backup Section -->
+        <div style="flex: 1; min-width: 250px; padding: 15px; border: 1px dashed #aaa; border-radius: 8px; background: #fff;">
+          <h4 style="margin-bottom: 5px;">1. Backup Database</h4>
+          <p style="font-size: 0.85rem; margin-bottom: 10px; color: #666;">Download a complete .sql copy of the database.</p>
+          <button type="button" class="btn-action btn-success" onclick="backupDatabase()" style="box-shadow: none;">Create Backup</button>
+        </div>
+
+        <!-- Restore Section -->
+        <div style="flex: 1; min-width: 250px; padding: 15px; border: 1px dashed #aaa; border-radius: 8px; background: #fff;">
+          <h4 style="margin-bottom: 5px;">2. Restore Database</h4>
+          <p style="font-size: 0.85rem; margin-bottom: 10px; color: #666;">Upload a .sql file to overwrite the database.</p>
+          <form id="restoreForm" onsubmit="restoreDatabase(event)" style="display: flex; flex-direction: column; gap: 10px;">
+            <input type="file" id="backupFile" accept=".sql" required style="font-size: 0.85rem; padding: 4px;">
+            <button type="submit" class="btn-action btn-danger" style="box-shadow: none; align-self: flex-start;">Upload & Restore</button>
+          </form>
+        </div>
+      </div>
+      <p id="backupMessage" class="success-message" style="margin-top: 15px; font-weight: bold;"></p>
+    </div>
+
   </main>
 
     <!-- Remarks Modal -->
@@ -152,7 +177,7 @@
         tbody.innerHTML = "";
 
         if (ordersList.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No records found. Click '+ Add Order' to create one.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">No records found.</td></tr>`;
             return;
         }
 
@@ -227,7 +252,8 @@
         ordersList.forEach(order => {
             let option = document.createElement("option");
             option.value = order.id;
-            option.textContent = `Order #${order.id} - ${order.customer_name} (${order.order_details.substring(0, 30)}...)`;
+            let detailsText = order.order_details ? order.order_details : (order.special_notes ? order.special_notes : "No items listed");
+            option.textContent = `Order #${order.id} - ${order.customer_name} (${detailsText.substring(0, 30)}...)`;
             select.appendChild(option);
         });
     }
@@ -297,91 +323,6 @@
       }
     }
 
-    function addNewRow() {
-        const tbody = document.getElementById("orderTableBody");
-        
-        // Remove empty placeholder row if present
-        if (tbody.children.length === 1 && tbody.children[0].cells.length === 1) {
-            tbody.innerHTML = "";
-        }
-
-        const newRow = document.createElement("tr");
-        newRow.innerHTML = `
-            <td>-</td>
-            <td><input type="text" id="add-name" placeholder="Name" style="width:90%"></td>
-            <td><input type="text" id="add-details" placeholder="e.g. 2x Chocolate Chip" style="width:90%"></td>
-            <td>
-                <select id="add-delivery" style="width:90%; padding:4px;">
-                    <option value="Pickup">Pickup</option>
-                    <option value="Delivery">Delivery</option>
-                </select>
-            </td>
-            <td>
-                <select id="add-payment" style="width:90%; padding:4px;">
-                    <option value="GCash">GCash</option>
-                    <option value="Maya">Maya</option>
-                    <option value="COD">COD</option>
-                </select>
-            </td>
-            <td><input type="text" id="add-phone" placeholder="Phone" style="width:90%"></td>
-            <td>
-                <select id="add-status" style="width:90%; padding:4px;">
-                    <option value="Pending">Pending</option>
-                    <option value="Preparing">Preparing</option>
-                    <option value="Ready for Pickup">Ready for Pickup</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Cancelled">Cancelled</option>
-                </select>
-            </td>
-            <td><input type="text" id="add-remarks" placeholder="Notes" style="width:90%"></td>
-            <td>
-                <button onclick="saveNewOrder()" class="btn-action btn-success" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Save</button>
-                <button onclick="loadOrders()" class="btn-action btn-secondary" style="padding:4px 10px; font-size:0.85rem; border-radius:4px; box-shadow:none;">Cancel</button>
-            </td>
-        `;
-        tbody.insertBefore(newRow, tbody.firstChild);
-    }
-
-    async function saveNewOrder() {
-        const name = document.getElementById("add-name").value.trim();
-        const details = document.getElementById("add-details").value.trim();
-        const delivery = document.getElementById("add-delivery").value;
-        const payment = document.getElementById("add-payment").value;
-        const phone = document.getElementById("add-phone").value.trim();
-        const status = document.getElementById("add-status").value;
-        const remarks = document.getElementById("add-remarks").value.trim();
-
-        if (!name || !details || !phone) {
-            alert("Name, Order Details, and Phone are required.");
-            return;
-        }
-
-        let formData = new FormData();
-        formData.append("customer_name", name);
-        formData.append("order_details", details);
-        formData.append("delivery_method", delivery);
-        formData.append("payment_method", payment);
-        formData.append("customer_phone", phone);
-        formData.append("status", status);
-        formData.append("special_notes", remarks);
-
-        try {
-            let response = await fetch("../php/admin_api.php?action=add_order", {
-                method: "POST",
-                body: formData
-            });
-            let res = await response.json();
-            if (res.status === "success") {
-                alert("Order added successfully.");
-                await loadOrders();
-            } else {
-                alert(res.message);
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Error adding order.");
-        }
-    }
 
     function editOrder(id) {
         const order = allOrders.find(o => o.id === id);
@@ -502,6 +443,67 @@
 
     function closeRemarksModal() {
         document.getElementById('remarksModal').style.display = 'none';
+    }
+
+    // --- Backup & Restore Logic ---
+    async function backupDatabase() {
+        const msg = document.getElementById("backupMessage");
+        msg.textContent = "Generating backup... Please wait.";
+        msg.style.color = "blue";
+        msg.style.display = "block";
+
+        try {
+            let res = await fetch("../php/admin_api.php?action=backup_db");
+            let data = await res.json();
+            
+            if (data.status === "success") {
+                msg.textContent = "Backup successful! Saved in the main folder as: " + data.file;
+                msg.style.color = "green";
+                alert("Backup generated successfully!\nFile: " + data.file + "\nYou can find it in the main 'meraki' folder.");
+            } else {
+                msg.textContent = "Backup failed: " + data.message;
+                msg.style.color = "red";
+            }
+        } catch (e) {
+            msg.textContent = "Error communicating with server.";
+            msg.style.color = "red";
+        }
+    }
+
+    async function restoreDatabase(event) {
+        event.preventDefault();
+        if (!confirm("WARNING: This will completely overwrite the existing database with the uploaded backup file. Are you absolutely sure?")) return;
+
+        const msg = document.getElementById("backupMessage");
+        const fileInput = document.getElementById("backupFile");
+        
+        msg.textContent = "Restoring database... Please do not close the page.";
+        msg.style.color = "blue";
+        msg.style.display = "block";
+
+        let formData = new FormData();
+        formData.append("backup_file", fileInput.files[0]);
+
+        try {
+            let res = await fetch("../php/admin_api.php?action=restore_db", {
+                method: "POST",
+                body: formData
+            });
+            let data = await res.json();
+
+            if (data.status === "success") {
+                msg.textContent = "Restore successful! Reloading page...";
+                msg.style.color = "green";
+                alert("Database restored successfully!");
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                msg.textContent = "Restore failed: " + data.message;
+                msg.style.color = "red";
+            }
+        } catch (e) {
+            msg.textContent = "Error communicating with server.";
+            msg.style.color = "red";
+        }
     }
   </script>
 

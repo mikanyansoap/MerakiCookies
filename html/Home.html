@@ -61,16 +61,6 @@
         University - Makati.</p>
     </section>
 
-    <section>
-      <h2>Our Team</h2>
-      <ul>
-        <li><strong>Krizelle Jacinto:</strong><br>Owner / Baker · Website Designer</li>
-        <li><strong>Heidi Benzon:</strong><br>Website Developer</li>
-        <li><strong>Angela Fernandez:</strong><br>Website Developer</li>
-        <li><strong>Sophia Peduca:</strong><br>Website Manager</li>
-      </ul>
-    </section>
-
     <section id="contact">
       <h2>Contact Info</h2>
       <p><strong>Phone:</strong> 09762963830</p>
@@ -98,26 +88,26 @@
   </script>
 
 
-<script>
-  document.addEventListener('DOMContentLoaded', async () => {
-    try {
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
         let res = await fetch('../php/fetch_data.php?target=account');
         let data = await res.json();
         let sidebar = document.getElementById('sidebarLinks');
         if (data.status === 'error' || !data.email) {
-            // Not logged in
-            if (sidebar) {
-                sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
-            }
+          // Not logged in
+          if (sidebar) {
+            sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+          }
         }
-    } catch(e) {
+      } catch (e) {
         let sidebar = document.getElementById('sidebarLinks');
         if (sidebar) {
-            sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
+          sidebar.innerHTML = '<li><a href="../html/Login.html">Log In</a></li>';
         }
-    }
-  });
-</script>
+      }
+    });
+  </script>
 
 </body>
 
